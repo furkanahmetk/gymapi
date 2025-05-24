@@ -7,7 +7,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
 from datetime import datetime, timedelta
 from functools import wraps
-
+"""
+This file contains the Flask app configuration and API endpoints.
+It also includes authentication and database models."""
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgres@localhost/gym_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
