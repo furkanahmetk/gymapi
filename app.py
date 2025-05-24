@@ -859,48 +859,45 @@ class FeedbackResource(Resource):
 
 if __name__ == '__main__':
     with app.app_context():
-        db.drop_all()
+        #db.drop_all()
+        # Create all tables if they don't exist
         db.create_all()
 
-        from sqlalchemy import inspect
+        # Check if tables are empty before populating them
+        if not Membership.query.first():
+            # Create default memberships if they don't exist
+            default_memberships = [
+                {'sign': 'em', 'fee': 350.00, 'typeName': 'economy', 'plan': 'monthly'},
+                {'sign': 'ea', 'fee': 4200.00, 'typeName': 'economy', 'plan': 'annual'},
+                {'sign': 'rm', 'fee': 600.00, 'typeName': 'regular', 'plan': 'monthly'},
+                {'sign': 'ra', 'fee': 7200.00, 'typeName': 'regular', 'plan': 'annual'},
+                {'sign': 'am', 'fee': 900.00, 'typeName': 'advanced', 'plan': 'monthly'},
+                {'sign': 'aa', 'fee': 9900.00, 'typeName': 'advanced', 'plan': 'annual'},
+                {"sign": "ad", "fee": 0, "typeName": "admin", "plan": "none"},
+                {"sign": "in", "fee": 0, "typeName": "instructor", "plan": "none"}
+            ]
 
-        inspector = inspect(db.engine)
-        tables = inspector.get_table_names()
+            for membership_data in default_memberships:
+                membership = Membership(**membership_data)
+                db.session.add(membership)
 
-        # Create default memberships if they don't exist
-        default_memberships = [
-            {'sign': 'em', 'fee': 350.00, 'typeName': 'economy', 'plan': 'monthly'},
-            {'sign': 'ea', 'fee': 4200.00, 'typeName': 'economy', 'plan': 'annual'},
-            {'sign': 'rm', 'fee': 600.00, 'typeName': 'regular', 'plan': 'monthly'},
-            {'sign': 'ra', 'fee': 7200.00, 'typeName': 'regular', 'plan': 'annual'},
-            {'sign': 'am', 'fee': 900.00, 'typeName': 'advanced', 'plan': 'monthly'},
-            {'sign': 'aa', 'fee': 9900.00, 'typeName': 'advanced', 'plan': 'annual'},
-            {"sign": "ad", "fee": 0, "typeName": "admin", "plan": "none"},
-            {"sign": "in", "fee": 0, "typeName": "instructor", "plan": "none"}
-        ]
+            print("Default memberships created.")
 
-        for i, membership_data in enumerate(default_memberships):
-            print(f"  Creating membership {i + 1}: {membership_data}")
-            membership = Membership(**membership_data)
-            db.session.add(membership)
-            print(f"  ✅ Added to session: {membership.sign}")
+        if not Room.query.first():
+            # Create default rooms if they don't exist
+            default_rooms = [
+                {'roomName': 'Gym Floor'},
+                {'roomName': 'Yoga Studio'},
+                {'roomName': 'Pilates Room'},
+                {'roomName': 'Cardio Zone'},
+                {'roomName': 'Weight Room'}
+            ]
 
-        print("💾 Committing to database...")
-        db.session.commit()
-
-        # Create default rooms if they don't exist
-        default_rooms = [
-            {'roomName': 'Gym Floor'},
-            {'roomName': 'Yoga Studio'},
-            {'roomName': 'Pilates Room'},
-            {'roomName': 'Cardio Zone'},
-            {'roomName': 'Weight Room'}
-        ]
-
-        for room_data in default_rooms:
-            if not Room.query.filter_by(roomName=room_data['roomName']).first():
+            for room_data in default_rooms:
                 room = Room(**room_data)
                 db.session.add(room)
+
+            print("Default rooms created.")
 
         # Create a default admin user if it doesn't exist
         admin_ssn = "ADMIN123"
@@ -909,16 +906,15 @@ if __name__ == '__main__':
                 SSN=admin_ssn,
                 firstName="Admin",
                 lastName="User",
-                membershipType="ad"  # Advanced annual membership
+                membershipType="ad"
             )
-            admin_user.set_password("admin123")  # Default password
+            admin_user.set_password("admin123")
             db.session.add(admin_user)
             print("Default admin user created - SSN: ADMIN123, Password: admin123")
 
         try:
             db.session.commit()
             print("Database initialized successfully!")
-            print("Default memberships and rooms created.")
         except Exception as e:
             db.session.rollback()
             print(f"Error initializing database: {e}")
