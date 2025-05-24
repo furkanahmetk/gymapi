@@ -1,0 +1,9 @@
+Flask==2.3.2
+Flask-SQLAlchemy==3.1.1
+Flask-Migrate==4.0.5
+Flask-Swagger-UI==4.11.1
+python-dotenv==1.0.1
+flask-cors
+flask_restx
+psycopg2-binary
+jwt
