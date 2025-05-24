@@ -48,6 +48,9 @@ def token_required(f):
         if not token:
             abort(401, 'Token is missing')
 
+        if is_token_blacklisted(token):
+            abort(401, 'Token is blacklisted')
+
         try:
             # Decode the token
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
@@ -85,9 +88,26 @@ def admin_required(f):
 
     return decorated
 
+# ------------Logout Mechanism Functions----------------
+def blacklist_token(token):
+    blacklisted_token = Blacklist(token=token)
+    db.session.add(blacklisted_token)
+    db.session.commit()
 
+def is_token_blacklisted(token):
+    blacklisted = Blacklist.query.filter_by(token=token).first()
+    return bool(blacklisted)
 
 # ------------ MODELS (Updated with password) ----------------
+
+class Blacklist(db.Model):
+    __tablename__ = 'Blacklist'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    token = db.Column(db.String(500), unique=True, nullable=False)
+    blacklisted_on = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    def __init__(self, token):
+        self.token = token
 
 class Membership(db.Model):
     __tablename__ = 'Membership'
@@ -328,7 +348,22 @@ class Login(Resource):
                 'membershipType': user.membershipType
             }
         }
+@api.route('/auth/logout')
+class Logout(Resource):
+    @api.doc(security='Bearer')
+    @token_required
+    def post(self, current_user):
+        """Logout user and blacklist the token"""
+        # Extract the token from the Authorization header
+        token = request.headers.get('Authorization').split(" ")[1]
 
+        # Check if token is already blacklisted
+        if is_token_blacklisted(token):
+            abort(400, 'Token is already blacklisted')
+
+        # Blacklist the token
+        blacklist_token(token)
+        return {'message': 'Successfully logged out'}, 200
 
 # ------------ API ENDPOINTS (Updated with Authentication) -----------------
 
