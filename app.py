@@ -5,9 +5,10 @@ from flask_restx import Api, Resource, fields, abort
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt  # This will work after installing PyJWT
-from jwt import encode, decode
 from datetime import datetime, timedelta
 from functools import wraps
+from flask import abort
+
 """
 This file contains the Flask app configuration and API endpoints.
 It also includes authentication and database models."""
@@ -40,29 +41,50 @@ def token_required(f):
     def decorated(*args, **kwargs):
         token = None
 
+        # Check for token in Authorization header
         if 'Authorization' in request.headers:
-            auth_header = request.headers['Authorization']
-            try:
-                token = auth_header.split(" ")[1]  # Bearer <token>
-            except IndexError:
-                abort(401, 'Invalid token format')
+            token = request.headers['Authorization'].split(" ")[1]
 
         if not token:
             abort(401, 'Token is missing')
 
         try:
+            # Decode the token
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+
+            # Fetch the user from the database
             current_user = Users.query.get(data['ssn'])
+
             if not current_user:
                 abort(401, 'User not found')
+
         except jwt.ExpiredSignatureError:
             abort(401, 'Token has expired')
         except jwt.InvalidTokenError:
             abort(401, 'Invalid token')
 
+        # Pass the current_user to the next function
         return f(current_user, *args, **kwargs)
 
     return decorated
+
+def admin_required(f):
+    @wraps(f)
+    def decorated(current_user, *args, **kwargs):
+        # Debugging logs to help trace the issue
+        print(f"DEBUG: Admin Check for User: {current_user}")
+        print(f"DEBUG: User Type: {type(current_user)}")
+        print(f"DEBUG: User Attributes: {dir(current_user)}")
+
+        # Check if the user is an admin
+        if not current_user or not hasattr(current_user, 'membershipType') or current_user.membershipType != 'ad':
+            abort(403, 'Admin privileges required')
+
+        # Proceed to the next function
+        return f(current_user, *args, **kwargs)
+
+    return decorated
+
 
 
 # ------------ MODELS (Updated with password) ----------------
@@ -183,7 +205,7 @@ register_model = api.model('Register', {
 })
 
 membership_model = api.model('Membership', {
-    'sign': fields.String(required=True, enum=['em', 'ea', 'rm', 'ra', 'am', 'aa'], description='Membership signature'),
+    'sign': fields.String(required=True, enum=['em', 'ea', 'rm', 'ra', 'am', 'aa', 'ad', 'in'], description='Membership signature'),
     'fee': fields.Float(required=True, description='Membership fee'),
     'typeName': fields.String(required=True, description='Type name (e.g., "economy")'),
     'plan': fields.String(required=True, description='Plan type (e.g., "monthly")')
@@ -293,6 +315,7 @@ class Login(Resource):
         # Generate token
         token = jwt.encode({
             'ssn': user.SSN,
+            'membershipType': user.membershipType,
             'exp': datetime.utcnow() + timedelta(hours=24)
         }, app.config['SECRET_KEY'], algorithm='HS256')
 
@@ -320,6 +343,7 @@ class MembershipList(Resource):
     @api.expect(membership_model)
     @api.doc(security='Bearer')
     @token_required
+    @admin_required
     def post(self, current_user):
         """Create a new membership"""
         data = api.payload
@@ -340,6 +364,7 @@ class MembershipResource(Resource):
 
     @api.doc(security='Bearer')
     @token_required
+    @admin_required
     def delete(self, current_user, sign):
         """Delete membership"""
         membership = Membership.query.get_or_404(sign)
@@ -350,6 +375,7 @@ class MembershipResource(Resource):
     @api.expect(membership_model)
     @api.doc(security='Bearer')
     @token_required
+    @admin_required
     def put(self, current_user, sign):
         """Update membership"""
         membership = Membership.query.get_or_404(sign)
@@ -367,6 +393,7 @@ class UsersList(Resource):
     @api.marshal_list_with(user_model)
     @api.doc(security='Bearer')
     @token_required
+    @admin_required
     def get(self, current_user):
         """Get all users"""
         return Users.query.all()
@@ -377,6 +404,7 @@ class UsersResource(Resource):
     @api.marshal_with(user_model)
     @api.doc(security='Bearer')
     @token_required
+    @admin_required
     def get(self, current_user, ssn):
         """Get user by SSN"""
         user = Users.query.get_or_404(ssn)
@@ -384,6 +412,7 @@ class UsersResource(Resource):
 
     @api.doc(security='Bearer')
     @token_required
+    @admin_required
     def delete(self, current_user, ssn):
         """Delete user"""
         user = Users.query.get_or_404(ssn)
@@ -394,6 +423,7 @@ class UsersResource(Resource):
     @api.expect(user_model)
     @api.doc(security='Bearer')
     @token_required
+    @admin_required
     def put(self, current_user, ssn):
         """Update user"""
         user = Users.query.get_or_404(ssn)
@@ -414,6 +444,7 @@ class PhoneList(Resource):
     @api.marshal_list_with(phone_model)
     @api.doc(security='Bearer')
     @token_required
+    @admin_required
     def get(self, current_user):
         """Get all phones"""
         return Phone.query.all()
@@ -439,6 +470,7 @@ class PhoneResource(Resource):
     @api.marshal_with(phone_model)
     @api.doc(security='Bearer')
     @token_required
+    @admin_required
     def get(self, current_user, phone_number):
         """Get phone by number"""
         phone = Phone.query.get_or_404(phone_number)
@@ -446,6 +478,7 @@ class PhoneResource(Resource):
 
     @api.doc(security='Bearer')
     @token_required
+    @admin_required
     def delete(self, current_user, phone_number):
         """Delete phone"""
         phone = Phone.query.get_or_404(phone_number)
@@ -465,6 +498,7 @@ class InstructorsList(Resource):
     @api.expect(instructor_model)
     @api.doc(security='Bearer')
     @token_required
+    @admin_required
     def post(self, current_user):
         """Create a new instructor"""
         data = api.payload
@@ -486,6 +520,7 @@ class InstructorsResource(Resource):
 
     @api.doc(security='Bearer')
     @token_required
+    @admin_required
     def delete(self, current_user, ssn):
         """Delete instructor"""
         instructor = Instructors.query.get_or_404(ssn)
@@ -496,6 +531,7 @@ class InstructorsResource(Resource):
     @api.expect(instructor_model)
     @api.doc(security='Bearer')
     @token_required
+    @admin_required
     def put(self, current_user, ssn):
         """Update instructor"""
         instructor = Instructors.query.get_or_404(ssn)
@@ -518,6 +554,7 @@ class RoomList(Resource):
     @api.expect(room_model)
     @api.doc(security='Bearer')
     @token_required
+    @admin_required
     def post(self, current_user):
         """Create a new room"""
         data = api.payload
@@ -537,6 +574,7 @@ class RoomResource(Resource):
 
     @api.doc(security='Bearer')
     @token_required
+    @admin_required
     def delete(self, current_user, room_id):
         """Delete room"""
         room = Room.query.get_or_404(room_id)
@@ -547,6 +585,7 @@ class RoomResource(Resource):
     @api.expect(room_model)
     @api.doc(security='Bearer')
     @token_required
+    @admin_required
     def put(self, current_user, room_id):
         """Update room"""
         room = Room.query.get_or_404(room_id)
@@ -567,6 +606,7 @@ class CourseList(Resource):
     @api.expect(course_model)
     @api.doc(security='Bearer')
     @token_required
+    @admin_required
     def post(self, current_user):
         """Create a new course"""
         data = api.payload
@@ -592,6 +632,7 @@ class CourseResource(Resource):
 
     @api.doc(security='Bearer')
     @token_required
+    @admin_required
     def delete(self, current_user, course_name):
         """Delete course"""
         course = Course.query.get_or_404(course_name)
@@ -602,6 +643,7 @@ class CourseResource(Resource):
     @api.expect(course_model)
     @api.doc(security='Bearer')
     @token_required
+    @admin_required
     def put(self, current_user, course_name):
         """Update course"""
         course = Course.query.get_or_404(course_name)
@@ -626,6 +668,7 @@ class RoomScheduleList(Resource):
     @api.marshal_list_with(roomschedule_model)
     @api.doc(security='Bearer')
     @token_required
+    @admin_required
     def get(self, current_user):
         """Get all room schedules"""
         return RoomSchedule.query.all()
@@ -681,6 +724,7 @@ class UserCourseList(Resource):
     @api.marshal_list_with(user_course_model)
     @api.doc(security='Bearer')
     @token_required
+    @admin_required
     def get(self, current_user):
         """Get all user course enrollments"""
         return User_Course.query.all()
@@ -731,6 +775,7 @@ class FeedbackList(Resource):
     @api.marshal_list_with(feedback_model)
     @api.doc(security='Bearer')
     @token_required
+    @admin_required
     def get(self, current_user):
         """Get all feedback"""
         return Feedback.query.all()
@@ -766,6 +811,7 @@ class FeedbackResource(Resource):
 
     @api.doc(security='Bearer')
     @token_required
+    @admin_required
     def delete(self, current_user, feedback_id):
         """Delete feedback"""
         feedback = Feedback.query.get_or_404(feedback_id)
@@ -793,7 +839,9 @@ if __name__ == '__main__':
             {'sign': 'rm', 'fee': 600.00, 'typeName': 'regular', 'plan': 'monthly'},
             {'sign': 'ra', 'fee': 7200.00, 'typeName': 'regular', 'plan': 'annual'},
             {'sign': 'am', 'fee': 900.00, 'typeName': 'advanced', 'plan': 'monthly'},
-            {'sign': 'aa', 'fee': 9900.00, 'typeName': 'advanced', 'plan': 'annual'}
+            {'sign': 'aa', 'fee': 9900.00, 'typeName': 'advanced', 'plan': 'annual'},
+            {"sign": "ad", "fee": 0, "typeName": "admin", "plan": "none"},
+            {"sign": "in", "fee": 0, "typeName": "instructor", "plan": "none"}
         ]
 
         for i, membership_data in enumerate(default_memberships):
@@ -826,7 +874,7 @@ if __name__ == '__main__':
                 SSN=admin_ssn,
                 firstName="Admin",
                 lastName="User",
-                membershipType="aa"  # Advanced annual membership
+                membershipType="ad"  # Advanced annual membership
             )
             admin_user.set_password("admin123")  # Default password
             db.session.add(admin_user)

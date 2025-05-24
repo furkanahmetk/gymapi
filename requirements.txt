@@ -8,4 +8,4 @@ flask_restx
 psycopg2-binary
 PyJWT
 jwt
-
+flask-login
