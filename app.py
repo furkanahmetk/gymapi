@@ -4,7 +4,8 @@ from flask_migrate import Migrate
 from flask_restx import Api, Resource, fields, abort
 from decimal import Decimal
 from werkzeug.security import generate_password_hash, check_password_hash
-import jwt
+import jwt  # This will work after installing PyJWT
+from jwt import encode, decode
 from datetime import datetime, timedelta
 from functools import wraps
 """
