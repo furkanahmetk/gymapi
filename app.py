@@ -2,7 +2,7 @@ from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_restx import Api, Resource, fields, abort
-from decimal import Decimal
+from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt  # This will work after installing PyJWT
 from jwt import encode, decode
@@ -15,12 +15,23 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgres@localhost/gym_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'your-secret-key-change-this'  # Change this to a secure secret key
+CORS(app)
+
+authorizations = {
+    'Bearer': {
+        'type': 'apiKey',
+        'in': 'header',
+        'name': 'Authorization',
+        'description': "Type 'Bearer' followed by your token"
+    }
+}
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 api = Api(app, version='1.0', title='Gym Course Scheduling API',
-          description='API for managing gym courses, rooms, users, and schedules')
-
+          description='API for managing gym courses, rooms, users, and schedules',
+          authorizations=authorizations
+          )
 
 # ------------ AUTHENTICATION DECORATOR ----------------
 
@@ -307,6 +318,7 @@ class MembershipList(Resource):
         return Membership.query.all()
 
     @api.expect(membership_model)
+    @api.doc(security='Bearer')
     @token_required
     def post(self, current_user):
         """Create a new membership"""
@@ -326,6 +338,7 @@ class MembershipResource(Resource):
         """Get membership by sign"""
         return Membership.query.get_or_404(sign)
 
+    @api.doc(security='Bearer')
     @token_required
     def delete(self, current_user, sign):
         """Delete membership"""
@@ -335,6 +348,7 @@ class MembershipResource(Resource):
         return {'message': 'Membership deleted'}
 
     @api.expect(membership_model)
+    @api.doc(security='Bearer')
     @token_required
     def put(self, current_user, sign):
         """Update membership"""
@@ -351,6 +365,7 @@ class MembershipResource(Resource):
 @api.route('/users')
 class UsersList(Resource):
     @api.marshal_list_with(user_model)
+    @api.doc(security='Bearer')
     @token_required
     def get(self, current_user):
         """Get all users"""
@@ -360,12 +375,14 @@ class UsersList(Resource):
 @api.route('/users/<string:ssn>')
 class UsersResource(Resource):
     @api.marshal_with(user_model)
+    @api.doc(security='Bearer')
     @token_required
     def get(self, current_user, ssn):
         """Get user by SSN"""
         user = Users.query.get_or_404(ssn)
         return user
 
+    @api.doc(security='Bearer')
     @token_required
     def delete(self, current_user, ssn):
         """Delete user"""
@@ -375,6 +392,7 @@ class UsersResource(Resource):
         return {'message': 'User deleted'}
 
     @api.expect(user_model)
+    @api.doc(security='Bearer')
     @token_required
     def put(self, current_user, ssn):
         """Update user"""
@@ -394,12 +412,14 @@ class UsersResource(Resource):
 @api.route('/phones')
 class PhoneList(Resource):
     @api.marshal_list_with(phone_model)
+    @api.doc(security='Bearer')
     @token_required
     def get(self, current_user):
         """Get all phones"""
         return Phone.query.all()
 
     @api.expect(phone_model)
+    @api.doc(security='Bearer')
     @token_required
     def post(self, current_user):
         """Create a new phone"""
@@ -417,12 +437,14 @@ class PhoneList(Resource):
 @api.route('/phones/<string:phone_number>')
 class PhoneResource(Resource):
     @api.marshal_with(phone_model)
+    @api.doc(security='Bearer')
     @token_required
     def get(self, current_user, phone_number):
         """Get phone by number"""
         phone = Phone.query.get_or_404(phone_number)
         return phone
 
+    @api.doc(security='Bearer')
     @token_required
     def delete(self, current_user, phone_number):
         """Delete phone"""
@@ -441,6 +463,7 @@ class InstructorsList(Resource):
         return Instructors.query.all()
 
     @api.expect(instructor_model)
+    @api.doc(security='Bearer')
     @token_required
     def post(self, current_user):
         """Create a new instructor"""
@@ -461,6 +484,7 @@ class InstructorsResource(Resource):
         instructor = Instructors.query.get_or_404(ssn)
         return instructor
 
+    @api.doc(security='Bearer')
     @token_required
     def delete(self, current_user, ssn):
         """Delete instructor"""
@@ -470,6 +494,7 @@ class InstructorsResource(Resource):
         return {'message': 'Instructor deleted'}
 
     @api.expect(instructor_model)
+    @api.doc(security='Bearer')
     @token_required
     def put(self, current_user, ssn):
         """Update instructor"""
@@ -491,6 +516,7 @@ class RoomList(Resource):
         return Room.query.all()
 
     @api.expect(room_model)
+    @api.doc(security='Bearer')
     @token_required
     def post(self, current_user):
         """Create a new room"""
@@ -509,6 +535,7 @@ class RoomResource(Resource):
         room = Room.query.get_or_404(room_id)
         return room
 
+    @api.doc(security='Bearer')
     @token_required
     def delete(self, current_user, room_id):
         """Delete room"""
@@ -518,6 +545,7 @@ class RoomResource(Resource):
         return {'message': 'Room deleted'}
 
     @api.expect(room_model)
+    @api.doc(security='Bearer')
     @token_required
     def put(self, current_user, room_id):
         """Update room"""
@@ -537,6 +565,7 @@ class CourseList(Resource):
         return Course.query.all()
 
     @api.expect(course_model)
+    @api.doc(security='Bearer')
     @token_required
     def post(self, current_user):
         """Create a new course"""
@@ -561,6 +590,7 @@ class CourseResource(Resource):
         course = Course.query.get_or_404(course_name)
         return course
 
+    @api.doc(security='Bearer')
     @token_required
     def delete(self, current_user, course_name):
         """Delete course"""
@@ -570,6 +600,7 @@ class CourseResource(Resource):
         return {'message': 'Course deleted'}
 
     @api.expect(course_model)
+    @api.doc(security='Bearer')
     @token_required
     def put(self, current_user, course_name):
         """Update course"""
@@ -593,12 +624,14 @@ class CourseResource(Resource):
 @api.route('/roomschedules')
 class RoomScheduleList(Resource):
     @api.marshal_list_with(roomschedule_model)
+    @api.doc(security='Bearer')
     @token_required
     def get(self, current_user):
         """Get all room schedules"""
         return RoomSchedule.query.all()
 
     @api.expect(roomschedule_model)
+    @api.doc(security='Bearer')
     @token_required
     def post(self, current_user):
         """Create a new room schedule"""
@@ -625,12 +658,14 @@ class RoomScheduleList(Resource):
 @api.route('/roomschedules/<int:schedule_id>')
 class RoomScheduleResource(Resource):
     @api.marshal_with(roomschedule_model)
+    @api.doc(security='Bearer')
     @token_required
     def get(self, current_user, schedule_id):
         """Get room schedule by ID"""
         schedule = RoomSchedule.query.get_or_404(schedule_id)
         return schedule
 
+    @api.doc(security='Bearer')
     @token_required
     def delete(self, current_user, schedule_id):
         """Delete room schedule"""
@@ -644,12 +679,14 @@ class RoomScheduleResource(Resource):
 @api.route('/user_courses')
 class UserCourseList(Resource):
     @api.marshal_list_with(user_course_model)
+    @api.doc(security='Bearer')
     @token_required
     def get(self, current_user):
         """Get all user course enrollments"""
         return User_Course.query.all()
 
     @api.expect(user_course_model)
+    @api.doc(security='Bearer')
     @token_required
     def post(self, current_user):
         """Enroll user in course"""
@@ -675,6 +712,7 @@ class UserCourseList(Resource):
 
 @api.route('/user_courses/<string:course_name>/<string:user_id>')
 class UserCourseResource(Resource):
+    @api.doc(security='Bearer')
     @token_required
     def delete(self, current_user, course_name, user_id):
         """Remove user from course"""
@@ -691,12 +729,14 @@ class UserCourseResource(Resource):
 @api.route('/feedbacks')
 class FeedbackList(Resource):
     @api.marshal_list_with(feedback_model)
+    @api.doc(security='Bearer')
     @token_required
     def get(self, current_user):
         """Get all feedback"""
         return Feedback.query.all()
 
     @api.expect(feedback_model)
+    @api.doc(security='Bearer')
     @token_required
     def post(self, current_user):
         """Create feedback"""
@@ -717,12 +757,14 @@ class FeedbackList(Resource):
 @api.route('/feedbacks/<int:feedback_id>')
 class FeedbackResource(Resource):
     @api.marshal_with(feedback_model)
+    @api.doc(security='Bearer')
     @token_required
     def get(self, current_user, feedback_id):
         """Get feedback by ID"""
         feedback = Feedback.query.get_or_404(feedback_id)
         return feedback
 
+    @api.doc(security='Bearer')
     @token_required
     def delete(self, current_user, feedback_id):
         """Delete feedback"""
