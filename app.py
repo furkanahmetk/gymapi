@@ -1323,7 +1323,40 @@ class FeedbackResource(Resource):
         db.session.commit()
         return {'message': 'Feedback deleted'}
 
+@app.route('/remove_member')
+def remove_members():
+    users = Users.query.all()
+    instructors = Instructors.query.all()
+    courses = Course.query.all()
 
+
+
+    return render_template('remove_members.html', users=users, instructors=instructors, courses=courses)
+
+@app.route('/remove/<identifier>')
+def remove(identifier):
+    # Try removing user
+    user = Users.query.filter_by(SSN=identifier).first()
+    if user:
+        db.session.delete(user)
+        db.session.commit()
+        return redirect(url_for('remove_member'))
+
+    # Try instructor
+    instructor = Instructors.query.filter_by(SSN=identifier).first()
+    if instructor:
+        db.session.delete(instructor)
+        db.session.commit()
+        return redirect(url_for('remove_member'))
+
+    # Try course
+    course = Course.query.filter_by(courseName=identifier).first()
+    if course:
+        db.session.delete(course)
+        db.session.commit()
+        return redirect(url_for('remove_member'))
+
+    return redirect(url_for('remove_member'))
 # ------------ ACTIVITIES ----------------
 @api.route('/activities')
 class ActivitiesResource(Resource):
