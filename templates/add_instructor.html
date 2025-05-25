@@ -10,7 +10,7 @@
     rel="stylesheet">
 
 <head>
-    <title>Register</title>
+    <title>Add Instructor</title>
     <link rel="stylesheet" type="text/css" href="../static/style.css">
 </head>
 
@@ -19,7 +19,7 @@
         <h1>Metu Gym Portal</h1>
     </div>
 
-    <div class="scrollHeader">
+     <div class="scrollHeader">
         <table class="Bar">
             <tr>
                 <th>
@@ -64,17 +64,10 @@
     <br>
     <br>
     <div class="CenterArea">
-        <form name="formRegistration" method="POST" onsubmit="return validate();" action="/register">
+        <form name="formRegistration" method="POST" action="/add_instructor">
             <label><b>SSN</b></label>
-            <input id="ssn" type="number" name="SSN" autocomplete="current-userName">
+            <input id="ssn" type="text" name="SSN" autocomplete="current-userName">
             <span id="usernameError" style="color: red;"></span>
-
-            <br><br>
-
-            <label><b>Password</b></label>
-            <input id="Pass" type="password" name="password" autocomplete="current-password">
-            <span id="passwordError" style="color: red;"></span>
-
 
             <br><br>
 
@@ -90,35 +83,10 @@
 
             <br><br>
 
-            <label><b>Phone No 1</b></label>
+            <label><b>Phone No</b></label>
             <input id="phoneNum" type="text" name="phoneNo" autocomplete="current-phoneNo">
             <span id="phoneNoError" style="color: red;"></span>
 
-            <br><br>
-
-            <label><b>Phone No 2</b></label>
-            <input id="phoneNum" type="text" name="phoneNo" autocomplete="current-phoneNo">
-            <span id="phoneNoError" style="color: red;"></span>
-
-            <br><br>
-
-            <label><b>Phone No 3</b></label>
-            <input id="phoneNum" type="text" name="phoneNo" autocomplete="current-phoneNo">
-            <span id="phoneNoError" style="color: red;"></span>
-
-            <br><br>
-
-            <label><b>Membership type</b></label>
-            <select name="membershipType" id="membershipType"
-                style="width: 150px; color: #cf0a2c; background-color: #fafafa; border-radius: 5px; outline: none;  border: 1px solid #888;">
-                <option value="ad">Admin</option>
-                <option value="em">Economy Monthly</option>
-                <option value="ea">Economy Annual</option>
-                <option value="rm">Regular Monthly</option>
-                <option value="ra">Regular Annual</option>
-                <option value="am">Advanced Monthly</option>
-                <option value="aa">Advanced Annual</option>
-            </select>
 
             <br><br>
 

@@ -1409,7 +1409,51 @@ class ActivityIndexResource(Resource):
 
         return activities
 
+@app.route('/feedback', methods=['GET'])
+def feedback_page():
+    user_ssn = session['user_id']
 
+    # User can only review schedules they've attended/booked
+    schedules = RoomSchedule.query.filter_by(userID=user_ssn).all()
+
+    return render_template(
+        'feedback.html',
+        schedules=schedules
+    )
+
+@app.route('/add-feedback', methods=['POST'])
+def add_feedback():
+    user_ssn = session['user_id']
+
+    schedule_id = request.form.get('schedule')
+    score = request.form.get('score')
+    comment = request.form.get('feedback')
+
+    if not schedule_id or not score:
+        return "Missing schedule or score", 400
+
+    try:
+        score_value = float(score)
+        if not (0 <= score_value <= 10):
+            return "Score must be between 0 and 10", 400
+    except ValueError:
+        return "Invalid score format", 400
+
+    schedule = RoomSchedule.query.get(schedule_id)
+    if not schedule or schedule.userID != user_ssn:
+        return "Unauthorized or invalid schedule", 403
+
+    feedback = Feedback(
+        roomId=schedule.roomId,
+        userID=user_ssn,
+        scheduleID=schedule.scheduleID,
+        score=score_value,
+        comment=comment
+    )
+    db.session.add(feedback)
+    db.session.commit()
+
+    return redirect(url_for('feedback_page'))
 # ------------ INDEX ----------------
 @api.route('/index')
 class IndexResource(Resource):
