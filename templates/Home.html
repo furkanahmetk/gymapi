@@ -64,7 +64,7 @@
 
         async function fetchClassData() {
             try {
-                const response = await fetch('/courses');
+                const response = await fetch('/schedule');
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
                 }
