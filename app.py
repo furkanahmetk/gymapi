@@ -1106,6 +1106,58 @@ class UserCourseResource(Resource):
         return {'message': 'User removed from course'}
 
 
+@app.route('/add_class', methods=['GET'])
+def add_class():
+    instructors = Instructors.query.all()
+    rooms = Room.query.all()
+
+    instructor_list = [
+        {
+            "SSN": inst.SSN,
+            "name": f"{inst.firstName} {inst.lastName}"
+        }
+        for inst in instructors
+    ]
+
+    room_list = [
+        {"ID": r.ID, "Name": r.roomName}
+        for r in rooms
+    ]
+
+    return render_template(
+        'add_class.html',
+        instructors=instructor_list,
+        rooms=room_list
+    )
+
+@app.route('/add-courses', methods=['POST'])
+def create_class():
+    class_name = request.form.get('className')
+    capacity = request.form.get('capacity')
+    instructor_id = request.form.get('instructor')
+    room_id = request.form.get('room')
+    is_special = True if request.form.get('check') == 'on' else False
+
+    # Validation
+    if not all([class_name, capacity, instructor_id, room_id]):
+        return jsonify({'error': 'Missing required fields'}), 400
+
+    if Course.query.get(class_name):
+        return jsonify({'error': 'Class already exists'}), 409
+
+    # Create and save course
+    new_course = Course(
+        courseName=class_name,
+        capacity=capacity,
+        isSpecial=is_special,
+        InstructorID=instructor_id,
+        roomId=room_id
+    )
+    db.session.add(new_course)
+    db.session.commit()
+
+    return render_template('/add-courses')
+
 # -------- Feedback Endpoints --------
 @api.route('/feedbacks')
 class FeedbackList(Resource):
