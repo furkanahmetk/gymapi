@@ -1,4 +1,4 @@
-from flask import Flask, request, session, redirect, url_for, jsonify
+from flask import Flask, request, session, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_restx import Api, Resource, fields, abort
@@ -360,9 +360,11 @@ create_activity_model = api.model('CreateActivity', {
 def index():
     if 'user_id' in session:
         # If user is logged in, redirect to home
+        user = Users.query.get(session['user_id'])
+
         return render_template('Home.html')
     # If no session exists, redirect to login
-    return redirect('login')
+    return render_template('login.html')
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -375,11 +377,11 @@ def login():
         # Fetch user from the database
         user = Users.query.get(ssn)
         if not user or not user.check_password(password):
-            # Render login page with error message for invalid credentials
             return render_template('login.html', message='Invalid credentials'), 401
 
         # Set session
         session['user_id'] = user.SSN
+        user = Users.query.get(session['user_id'])
 
         # Generate token
         token = jwt.encode({
@@ -388,7 +390,17 @@ def login():
             'exp': datetime.utcnow() + timedelta(hours=24)
         }, app.config['SECRET_KEY'], algorithm='HS256')
 
-        # Render dashboard template with user data and token
+        # If the user is an admin, load register.html
+        if user.membershipType == 'ad':
+            return render_template('register.html', user={
+                'SSN': user.SSN,
+                'firstName': user.firstName,
+                'lastName': user.lastName,
+                'membershipType': user.membershipType,
+                'token': token
+            })
+
+        # Otherwise, load home page
         return render_template('Home.html', user={
             'SSN': user.SSN,
             'firstName': user.firstName,
@@ -397,7 +409,6 @@ def login():
             'token': token
         })
 
-    # GET request - show login form
     return render_template('login.html')
 
 
@@ -414,16 +425,17 @@ def register_page():
 
         # Validate required fields
         if not ssn or not password or not first_name or not last_name:
-            return render_template('register.html', message='All required fields must be filled out')
+            return render_template('register.html', current_user=user, message='All required fields must be filled out')
 
         # Check if user already exists
         if Users.query.get(ssn):
-            return render_template('register.html', message='User with this SSN already exists')
+            return render_template('register.html', current_user=user, message='User with this SSN already exists')
 
         # Check if membership type exists
         if membership_type and not Membership.query.get(membership_type):
-            return render_template('register.html', message='Selected membership type is not valid')
+            return render_template('register.html', current_user=user, message='Selected membership type is not valid')
 
+        print("np")
         # Create new user
         user = Users(
             SSN=ssn,
@@ -448,19 +460,186 @@ def register_page():
             # Set session for the new user
             session['user_id'] = user.SSN
             # Redirect to home page after successful registration
-            return redirect(url_for('index'))
+            return render_template('register.html', current_user=user, message='Registration succeded')
         except Exception as e:
             db.session.rollback()
-            return render_template('register.html', message=f'Registration failed: {str(e)}')
+            return render_template('register.html', current_user=user, message=f'Registration failed: {str(e)}')
 
     # GET request - show registration form
-    return render_template('register.html')
+    return render_template('register.html', current_user=user)
 
 
 @app.route('/logout')
 def logout():
     session.pop('user_id', None)
     return redirect(url_for('index'))
+
+
+@app.route('/api/rooms')
+def get_rooms():
+    rooms = Room.query.all()
+    return jsonify([{'id': room.ID, 'name': room.name} for room in rooms]), 200
+
+
+@app.route('/api/courses')
+def get_courses():
+    courses = Course.query.all()
+    return jsonify([{'name': course.courseName} for course in courses]), 200
+
+
+# Admin booking sayfası için template render
+@app.route('/booking_admin')
+def booking_admin():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    current_user = Users.query.get(session['user_id'])
+    rooms = Room.query.all()
+    courses = Course.query.all()
+    schedules = RoomSchedule.query.all()
+    return render_template(
+        'book_class_admin.html',
+        rooms=rooms,
+        courses=courses,
+        roomSchedule=schedules
+    )
+
+
+# User booking sayfası için template render
+@app.route('/booking_user')
+def booking_user():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    current_user = db.session.get(Users, session['user_id'])
+
+    rooms = Room.query.all()
+    schedules = RoomSchedule.query.all()
+
+    # Serialize rooms
+    serialized_rooms = [
+        {
+            'id': room.ID,
+            'name': room.roomName,
+            # add any other fields you need
+        } for room in rooms
+    ]
+
+    # Serialize schedules (if needed)
+    serialized_schedules = [
+        {
+            'id': sched.id,
+            'room_id': sched.room_id,
+            'start_time': sched.start_time.isoformat(),  # if it's a datetime
+            'end_time': sched.end_time.isoformat()
+        } for sched in schedules
+    ]
+
+    return render_template(
+        'book_class_user.html',
+        rooms=serialized_rooms,
+        roomSchedule=serialized_schedules,
+        userSSN=current_user.SSN
+    )
+
+
+# Admin için özel booking endpoint'i
+@app.route('/booking_admin', methods=['POST'])
+def handle_admin_booking():
+    data = request.get_json()
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    current_user = Users.query.get(session['user_id'])
+    # Validasyonlar
+    required_fields = ['roomId', 'scheduleDate', 'scheduleTime', 'courseName']
+    if not all(field in data for field in required_fields):
+        return jsonify({'error': 'Missing required fields'}), 400
+
+    # Tarih ve saat parsing
+    try:
+        schedule_date = datetime.strptime(data['scheduleDate'], '%Y-%m-%d').date()
+        schedule_time = datetime.strptime(data['scheduleTime'], '%H:%M').time()
+    except ValueError:
+        return jsonify({'error': 'Invalid date/time format'}), 400
+
+    # Mevcut booking kontrolü
+    existing = RoomSchedule.query.filter_by(
+        roomId=data['roomId'],
+        scheduleDate=schedule_date,
+        scheduleTime=schedule_time
+    ).first()
+
+    if existing:
+        return jsonify({'error': 'Timeslot already booked'}), 409
+
+    # Yeni booking oluştur
+    new_booking = RoomSchedule(
+        roomId=data['roomId'],
+        scheduleDate=schedule_date,
+        scheduleTime=schedule_time,
+        bookingType='class',
+        courseName=data['courseName'],
+        isBooked=True
+    )
+
+    db.session.add(new_booking)
+    db.session.commit()
+
+    return jsonify({'message': 'Room booked successfully'}), 201
+
+
+# User için özel booking endpoint'i
+@app.route('/booking_user', methods=['POST'])
+@token_required
+def handle_user_booking(current_user):
+    data = request.get_json()
+
+    # Validasyonlar
+    required_fields = ['roomId', 'scheduleDate', 'scheduleTime']
+    if not all(field in data for field in required_fields):
+        return jsonify({'error': 'Missing required fields'}), 400
+
+    # Tarih ve saat parsing
+    try:
+        schedule_date = datetime.strptime(data['scheduleDate'], '%Y-%m-%d').date()
+        schedule_time = datetime.strptime(data['scheduleTime'], '%H:%M').time()
+    except ValueError:
+        return jsonify({'error': 'Invalid date/time format'}), 400
+
+    # Mevcut booking kontrolü
+    existing = RoomSchedule.query.filter_by(
+        roomId=data['roomId'],
+        scheduleDate=schedule_date,
+        scheduleTime=schedule_time
+    ).first()
+
+    if existing:
+        return jsonify({'error': 'Timeslot already booked'}), 409
+
+    # Yeni booking oluştur
+    new_booking = RoomSchedule(
+        roomId=data['roomId'],
+        scheduleDate=schedule_date,
+        scheduleTime=schedule_time,
+        bookingType='private',
+        userID=current_user.SSN,
+        isBooked=True
+    )
+
+    db.session.add(new_booking)
+    db.session.commit()
+
+    return jsonify({'message': 'Room booked successfully'}), 201
+
+
+# Mevcut /roomschedules endpoint'ini güncelleme
+@api.route('/roomschedules')
+class RoomScheduleList(Resource):
+    @api.marshal_list_with(roomschedule_model)
+    def get(self):
+        """Tüm odaların programını getir (JSON formatında)"""
+        return RoomSchedule.query.all()
 
 
 # ------------ AUTHENTICATION ENDPOINTS ----------------
@@ -493,6 +672,71 @@ class Register(Resource):
         db.session.commit()
 
         return {'message': 'User registered successfully'}, 201
+
+
+@api.route('/schedule')
+class ScheduleList(Resource):
+    @api.marshal_list_with(roomschedule_model)
+    def get(self):
+        """Get all scheduled courses"""
+        # ORM ile sorgu
+        schedules = RoomSchedule.query.join(Course, RoomSchedule.courseName == Course.courseName) \
+            .filter(RoomSchedule.courseName.isnot(None)).all()
+        return schedules
+
+
+'''
+@api.route('/auth/login')
+class Login(Resource):
+    @api.expect(login_model)
+    def post(self):
+        if request.is_json:
+            data = request.json
+        else:
+            data = request.form
+        """Login user, generate token, and render template"""
+        # Parse form data
+        ssn = data.get('SSN')
+        password = data.get('password')
+
+        # Fetch user from the database
+        user = Users.query.get(ssn)
+        if not user or not user.check_password(password):
+            # Render login page with error message for invalid credentials
+            return render_template('login.html', message='Invalid credentials'), 401
+
+        # Generate token
+        token = jwt.encode({
+            'ssn': user.SSN,
+            'membershipType': user.membershipType,
+            'exp': datetime.utcnow() + timedelta(hours=24)
+        }, app.config['SECRET_KEY'], algorithm='HS256')
+
+        # Render dashboard template with user data and token
+        return render_template('Home.html', user={
+            'SSN': user.SSN,
+            'firstName': user.firstName,
+            'lastName': user.lastName,
+            'membershipType': user.membershipType,
+            'token': token
+        })
+
+@api.route('/auth/logout')
+class Logout(Resource):
+    @api.doc(security='Bearer')
+    @token_required
+    def post(self, current_user):
+        """Logout user and blacklist the token"""
+        # Extract the token from the Authorization header
+        token = request.headers.get('Authorization').split(" ")[1]
+
+        # Check if token is already blacklisted
+        if is_token_blacklisted(token):
+            abort(400, 'Token is already blacklisted')
+
+        # Blacklist the token
+        blacklist_token(token)
+        return {'message': 'Successfully logged out'}, 200'''
 
 
 # ------------ API ENDPOINTS (Updated with Authentication) -----------------
@@ -604,41 +848,30 @@ class UsersResource(Resource):
 
 
 # -------- Phone Endpoints --------
-@app.route('/phones', methods=['GET'])
-@token_required
-@admin_required
-def get_phones(current_user):
-    """Get all phones"""
-    phones = Phone.query.all()
-    result = [
-        {
-            "phone": phone.phone,
-            "userSSN": phone.userSSN
-        } for phone in phones
-    ]
-    return jsonify(result), 200
+@api.route('/phones')
+class PhoneList(Resource):
+    @api.marshal_list_with(phone_model)
+    @api.doc(security='Bearer')
+    @token_required
+    @admin_required
+    def get(self, current_user):
+        """Get all phones"""
+        return Phone.query.all()
 
-
-@app.route('/phones', methods=['POST'])
-@token_required
-def create_phone(current_user):
-    """Create a new phone"""
-    data = request.get_json()
-
-    if not data or 'phone' not in data:
-        abort(400, 'Missing phone number')
-
-    if Phone.query.get(data['phone']):
-        abort(400, 'Phone number already exists')
-
-    if data.get('userSSN') and not Users.query.get(data['userSSN']):
-        abort(400, 'User not found')
-
-    phone = Phone(**data)
-    db.session.add(phone)
-    db.session.commit()
-
-    return jsonify({'message': 'Phone created'}), 201
+    @api.expect(phone_model)
+    @api.doc(security='Bearer')
+    @token_required
+    def post(self, current_user):
+        """Create a new phone"""
+        data = api.payload
+        if Phone.query.get(data['phone']):
+            abort(400, 'Phone number already exists')
+        if data.get('userSSN') and not Users.query.get(data['userSSN']):
+            abort(400, 'User not found')
+        phone = Phone(**data)
+        db.session.add(phone)
+        db.session.commit()
+        return {'message': 'Phone created'}, 201
 
 
 @api.route('/phones/<string:phone_number>')
@@ -1088,23 +1321,6 @@ class IndexResource(Resource):
 
         return make_response(render_template('Home.html', activities=activities), 200, {'Content-Type': 'text/html'})
 
-#----------SCHEDULE------------
-@app.route('/schedule')
-def get_schedule():
-    """Get all scheduled courses in a specific format"""
-    schedules = RoomSchedule.query.join(Course, RoomSchedule.courseName == Course.courseName) \
-        .filter(RoomSchedule.courseName.isnot(None)).all()
-
-    schedule_list = [
-        {
-            "name": schedule.courseName,
-            "date": f"{schedule.scheduleDate.month}-{schedule.scheduleDate.day}",
-            "time": schedule.scheduleTime.strftime('%H:%M')
-        }
-        for schedule in schedules
-    ]
-
-    return jsonify(schedule_list), 200
 
 # ------------ MAIN APPLICATION ----------------
 
@@ -1171,4 +1387,4 @@ if __name__ == '__main__':
             print(f"Error initializing database: {e}")
 
     # Run the application
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5001)
