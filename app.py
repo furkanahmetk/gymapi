@@ -14,7 +14,7 @@ from flask import Flask, request, render_template, make_response
 This file contains the Flask app configuration and API endpoints.
 It also includes authentication and database models."""
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:CameliS!20@localhost/gym_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgres@localhost/gym_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'your-secret-key-change-this'  # Change this to a secure secret key
 CORS(app)
