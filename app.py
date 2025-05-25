@@ -34,10 +34,9 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 api = Api(app, version='1.0', title='Gym Course Scheduling API',
           description='API for managing gym courses, rooms, users, and schedules',
-          authorizations=authorizations,
-          doc='/api/docs',  # Move Swagger UI to /api/docs
-          prefix='/api'     # All API endpoints will be prefixed with /api
+          authorizations=authorizations
           )
+
 
 # ------------ AUTHENTICATION DECORATOR ----------------
 
@@ -76,6 +75,7 @@ def token_required(f):
 
     return decorated
 
+
 def admin_required(f):
     @wraps(f)
     def decorated(current_user, *args, **kwargs):
@@ -93,16 +93,20 @@ def admin_required(f):
 
     return decorated
 
+
 # ------------Logout Mechanism Functions----------------
 def blacklist_token(token):
     blacklisted_token = Blacklist(token=token)
     db.session.add(blacklisted_token)
     db.session.commit()
 
+
 def is_token_blacklisted(token):
     blacklisted = Blacklist.query.filter_by(token=token).first()
     return bool(blacklisted)
-#---------------Automatic activit creation function-----------
+
+
+# ---------------Automatic activit creation function-----------
 
 def create_activity(name, description, date, time, created_by):
     """
@@ -118,6 +122,7 @@ def create_activity(name, description, date, time, created_by):
     db.session.add(new_activity)
     db.session.commit()
 
+
 # ------------ MODELS (Updated with password) ----------------
 
 class Blacklist(db.Model):
@@ -128,6 +133,7 @@ class Blacklist(db.Model):
 
     def __init__(self, token):
         self.token = token
+
 
 class Membership(db.Model):
     __tablename__ = 'Membership'
@@ -143,6 +149,7 @@ class Membership(db.Model):
             'typeName': self.typeName,
             'plan': self.plan
         }
+
 
 class Users(db.Model):
     __tablename__ = 'Users'
@@ -227,6 +234,7 @@ class Feedback(db.Model):
     user = db.relationship('Users', backref='feedbacks')
     schedule = db.relationship('RoomSchedule', backref='feedbacks')
 
+
 class Activities(db.Model):
     __tablename__ = 'activities'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -262,7 +270,8 @@ register_model = api.model('Register', {
 })
 
 membership_model = api.model('Membership', {
-    'sign': fields.String(required=True, enum=['em', 'ea', 'rm', 'ra', 'am', 'aa', 'ad', 'in'], description='Membership signature'),
+    'sign': fields.String(required=True, enum=['em', 'ea', 'rm', 'ra', 'am', 'aa', 'ad', 'in'],
+                          description='Membership signature'),
     'fee': fields.Float(required=True, description='Membership fee'),
     'typeName': fields.String(required=True, description='Type name (e.g., "economy")'),
     'plan': fields.String(required=True, description='Plan type (e.g., "monthly")')
@@ -341,6 +350,295 @@ create_activity_model = api.model('CreateActivity', {
     'date': fields.String(required=True, description='Activity date (YYYY-MM-DD)'),
     'time': fields.String(required=True, description='Activity time (HH:MM:SS)')
 })
+
+
+# ------------ BASIC ROUTES ----------------
+
+@app.route('/')
+def index():
+    if 'user_id' in session:
+        # If user is logged in, redirect to home
+        user = Users.query.get(session['user_id'])
+
+        return render_template('Home.html')
+    # If no session exists, redirect to login
+    return render_template('login.html')
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        # Parse form data
+        ssn = request.form.get('SSN')
+        password = request.form.get('password')
+
+        # Fetch user from the database
+        user = Users.query.get(ssn)
+        if not user or not user.check_password(password):
+            return render_template('login.html', message='Invalid credentials'), 401
+
+        # Set session
+        session['user_id'] = user.SSN
+        user = Users.query.get(session['user_id'])
+
+        # Generate token
+        token = jwt.encode({
+            'ssn': user.SSN,
+            'membershipType': user.membershipType,
+            'exp': datetime.utcnow() + timedelta(hours=24)
+        }, app.config['SECRET_KEY'], algorithm='HS256')
+
+        # If the user is an admin, load register.html
+        if user.membershipType == 'ad':
+            return render_template('register.html', user={
+                'SSN': user.SSN,
+                'firstName': user.firstName,
+                'lastName': user.lastName,
+                'membershipType': user.membershipType,
+                'token': token
+            })
+
+        # Otherwise, load home page
+        return render_template('Home.html', user={
+            'SSN': user.SSN,
+            'firstName': user.firstName,
+            'lastName': user.lastName,
+            'membershipType': user.membershipType,
+            'token': token
+        })
+
+    return render_template('login.html')
+
+
+@app.route('/register', methods=['GET', 'POST'])
+def register_page():
+    if request.method == 'POST':
+        # Get form data
+        ssn = request.form.get('SSN')
+        password = request.form.get('password')
+        first_name = request.form.get('firstName')
+        last_name = request.form.get('lastName')
+        membership_type = request.form.get('membershipType')
+        phone_numbers = request.form.getlist('phoneNo')
+
+        # Validate required fields
+        if not ssn or not password or not first_name or not last_name:
+            return render_template('register.html', current_user=user, message='All required fields must be filled out')
+
+        # Check if user already exists
+        if Users.query.get(ssn):
+            return render_template('register.html', current_user=user, message='User with this SSN already exists')
+
+        # Check if membership type exists
+        if membership_type and not Membership.query.get(membership_type):
+            return render_template('register.html', current_user=user, message='Selected membership type is not valid')
+
+        print("np")
+        # Create new user
+        user = Users(
+            SSN=ssn,
+            firstName=first_name,
+            lastName=last_name,
+            membershipType=membership_type
+        )
+        user.set_password(password)
+
+        # Add user to database
+        db.session.add(user)
+
+        # Add phone numbers if provided
+        for phone in phone_numbers:
+            if phone.strip():  # Only add non-empty phone numbers
+                phone_entry = Phone(phone=phone, userSSN=ssn)
+                db.session.add(phone_entry)
+
+        # Commit changes to database
+        try:
+            db.session.commit()
+            # Set session for the new user
+            session['user_id'] = user.SSN
+            # Redirect to home page after successful registration
+            return render_template('register.html', current_user=user, message='Registration succeded')
+        except Exception as e:
+            db.session.rollback()
+            return render_template('register.html', current_user=user, message=f'Registration failed: {str(e)}')
+
+    # GET request - show registration form
+    return render_template('register.html', current_user=user)
+
+
+@app.route('/logout')
+def logout():
+    session.pop('user_id', None)
+    return redirect(url_for('index'))
+
+
+@app.route('/api/rooms')
+def get_rooms():
+    rooms = Room.query.all()
+    return jsonify([{'id': room.ID, 'name': room.name} for room in rooms]), 200
+
+
+@app.route('/api/courses')
+def get_courses():
+    courses = Course.query.all()
+    return jsonify([{'name': course.courseName} for course in courses]), 200
+
+
+# Admin booking sayfası için template render
+@app.route('/booking_admin')
+def booking_admin():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    current_user = Users.query.get(session['user_id'])
+    rooms = Room.query.all()
+    courses = Course.query.all()
+    schedules = RoomSchedule.query.all()
+    return render_template(
+        'book_class_admin.html',
+        rooms=rooms,
+        courses=courses,
+        roomSchedule=schedules
+    )
+
+
+# User booking sayfası için template render
+@app.route('/booking_user')
+def booking_user():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    current_user = db.session.get(Users, session['user_id'])
+
+    rooms = Room.query.all()
+    schedules = RoomSchedule.query.all()
+
+    # Serialize rooms
+    serialized_rooms = [
+        {
+            'id': room.ID,
+            'name': room.roomName,
+            # add any other fields you need
+        } for room in rooms
+    ]
+
+    # Serialize schedules (if needed)
+    serialized_schedules = [
+        {
+            'id': sched.id,
+            'room_id': sched.room_id,
+            'start_time': sched.start_time.isoformat(),  # if it's a datetime
+            'end_time': sched.end_time.isoformat()
+        } for sched in schedules
+    ]
+
+    return render_template(
+        'book_class_user.html',
+        rooms=serialized_rooms,
+        roomSchedule=serialized_schedules,
+        userSSN=current_user.SSN
+    )
+
+
+# Admin için özel booking endpoint'i
+@app.route('/booking_admin', methods=['POST'])
+def handle_admin_booking():
+    data = request.get_json()
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    current_user = Users.query.get(session['user_id'])
+    # Validasyonlar
+    required_fields = ['roomId', 'scheduleDate', 'scheduleTime', 'courseName']
+    if not all(field in data for field in required_fields):
+        return jsonify({'error': 'Missing required fields'}), 400
+
+    # Tarih ve saat parsing
+    try:
+        schedule_date = datetime.strptime(data['scheduleDate'], '%Y-%m-%d').date()
+        schedule_time = datetime.strptime(data['scheduleTime'], '%H:%M').time()
+    except ValueError:
+        return jsonify({'error': 'Invalid date/time format'}), 400
+
+    # Mevcut booking kontrolü
+    existing = RoomSchedule.query.filter_by(
+        roomId=data['roomId'],
+        scheduleDate=schedule_date,
+        scheduleTime=schedule_time
+    ).first()
+
+    if existing:
+        return jsonify({'error': 'Timeslot already booked'}), 409
+
+    # Yeni booking oluştur
+    new_booking = RoomSchedule(
+        roomId=data['roomId'],
+        scheduleDate=schedule_date,
+        scheduleTime=schedule_time,
+        bookingType='class',
+        courseName=data['courseName'],
+        isBooked=True
+    )
+
+    db.session.add(new_booking)
+    db.session.commit()
+
+    return jsonify({'message': 'Room booked successfully'}), 201
+
+
+# User için özel booking endpoint'i
+@app.route('/booking_user', methods=['POST'])
+@token_required
+def handle_user_booking(current_user):
+    data = request.get_json()
+
+    # Validasyonlar
+    required_fields = ['roomId', 'scheduleDate', 'scheduleTime']
+    if not all(field in data for field in required_fields):
+        return jsonify({'error': 'Missing required fields'}), 400
+
+    # Tarih ve saat parsing
+    try:
+        schedule_date = datetime.strptime(data['scheduleDate'], '%Y-%m-%d').date()
+        schedule_time = datetime.strptime(data['scheduleTime'], '%H:%M').time()
+    except ValueError:
+        return jsonify({'error': 'Invalid date/time format'}), 400
+
+    # Mevcut booking kontrolü
+    existing = RoomSchedule.query.filter_by(
+        roomId=data['roomId'],
+        scheduleDate=schedule_date,
+        scheduleTime=schedule_time
+    ).first()
+
+    if existing:
+        return jsonify({'error': 'Timeslot already booked'}), 409
+
+    # Yeni booking oluştur
+    new_booking = RoomSchedule(
+        roomId=data['roomId'],
+        scheduleDate=schedule_date,
+        scheduleTime=schedule_time,
+        bookingType='private',
+        userID=current_user.SSN,
+        isBooked=True
+    )
+
+    db.session.add(new_booking)
+    db.session.commit()
+
+    return jsonify({'message': 'Room booked successfully'}), 201
+
+
+# Mevcut /roomschedules endpoint'ini güncelleme
+@api.route('/roomschedules')
+class RoomScheduleList(Resource):
+    @api.marshal_list_with(roomschedule_model)
+    def get(self):
+        """Tüm odaların programını getir (JSON formatında)"""
+        return RoomSchedule.query.all()
+
 
 # ------------ BASIC ROUTES ----------------
 
@@ -653,17 +951,7 @@ class Register(Resource):
 
         return {'message': 'User registered successfully'}, 201
 
-@api.route('/schedule')
-class ScheduleList(Resource):
-    @api.marshal_list_with(roomschedule_model)
-    def get(self):
-        """Get all scheduled courses"""
-        # ORM ile sorgu
-        schedules = RoomSchedule.query.join(Course, RoomSchedule.courseName == Course.courseName) \
-            .filter(RoomSchedule.courseName.isnot(None)).all()
-        return schedules
 
-'''
 @api.route('/auth/login')
 class Login(Resource):
     @api.expect(login_model)
@@ -714,7 +1002,7 @@ class Logout(Resource):
 
         # Blacklist the token
         blacklist_token(token)
-        return {'message': 'Successfully logged out'}, 200'''
+        return {'message': 'Successfully logged out'}, 200
 
 # ------------ API ENDPOINTS (Updated with Authentication) -----------------
 
@@ -1106,6 +1394,7 @@ class RoomScheduleList(Resource):
 
         return {'message': 'Room schedule created and activity logged'}, 201
 
+
 @api.route('/roomschedules/<int:schedule_id>')
 class RoomScheduleResource(Resource):
     @api.marshal_with(roomschedule_model)
@@ -1280,6 +1569,7 @@ class ActivityIndexResource(Resource):
 
         return activities
 
+
 # ------------ INDEX ----------------
 @api.route('/index')
 class IndexResource(Resource):
@@ -1301,7 +1591,7 @@ class IndexResource(Resource):
 
 if __name__ == '__main__':
     with app.app_context():
-        #db.drop_all()
+        # db.drop_all()
         # Create all tables if they don't exist
         db.create_all()
 
