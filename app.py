@@ -1,4 +1,4 @@
-from flask import Flask, request, session, redirect, url_for
+from flask import Flask, request, session, redirect, url_for, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_restx import Api, Resource, fields, abort
@@ -14,7 +14,7 @@ from flask import Flask, request, render_template, make_response
 This file contains the Flask app configuration and API endpoints.
 It also includes authentication and database models."""
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:123@localhost/gym_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:CameliS!20@localhost/gym_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'your-secret-key-change-this'  # Change this to a secure secret key
 CORS(app)
@@ -34,7 +34,9 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 api = Api(app, version='1.0', title='Gym Course Scheduling API',
           description='API for managing gym courses, rooms, users, and schedules',
-          authorizations=authorizations
+          authorizations=authorizations,
+          doc='/api/docs',  # Move Swagger UI to /api/docs
+          prefix='/api'  # All API endpoints will be prefixed with /api
           )
 
 
@@ -358,11 +360,9 @@ create_activity_model = api.model('CreateActivity', {
 def index():
     if 'user_id' in session:
         # If user is logged in, redirect to home
-        user = Users.query.get(session['user_id'])
-
         return render_template('Home.html')
     # If no session exists, redirect to login
-    return render_template('login.html')
+    return redirect('login')
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -375,11 +375,11 @@ def login():
         # Fetch user from the database
         user = Users.query.get(ssn)
         if not user or not user.check_password(password):
+            # Render login page with error message for invalid credentials
             return render_template('login.html', message='Invalid credentials'), 401
 
         # Set session
         session['user_id'] = user.SSN
-        user = Users.query.get(session['user_id'])
 
         # Generate token
         token = jwt.encode({
@@ -388,17 +388,7 @@ def login():
             'exp': datetime.utcnow() + timedelta(hours=24)
         }, app.config['SECRET_KEY'], algorithm='HS256')
 
-        # If the user is an admin, load register.html
-        if user.membershipType == 'ad':
-            return render_template('register.html', user={
-                'SSN': user.SSN,
-                'firstName': user.firstName,
-                'lastName': user.lastName,
-                'membershipType': user.membershipType,
-                'token': token
-            })
-
-        # Otherwise, load home page
+        # Render dashboard template with user data and token
         return render_template('Home.html', user={
             'SSN': user.SSN,
             'firstName': user.firstName,
@@ -407,6 +397,7 @@ def login():
             'token': token
         })
 
+    # GET request - show login form
     return render_template('login.html')
 
 
@@ -423,17 +414,16 @@ def register_page():
 
         # Validate required fields
         if not ssn or not password or not first_name or not last_name:
-            return render_template('register.html', current_user=user, message='All required fields must be filled out')
+            return render_template('register.html', message='All required fields must be filled out')
 
         # Check if user already exists
         if Users.query.get(ssn):
-            return render_template('register.html', current_user=user, message='User with this SSN already exists')
+            return render_template('register.html', message='User with this SSN already exists')
 
         # Check if membership type exists
         if membership_type and not Membership.query.get(membership_type):
-            return render_template('register.html', current_user=user, message='Selected membership type is not valid')
+            return render_template('register.html', message='Selected membership type is not valid')
 
-        print("np")
         # Create new user
         user = Users(
             SSN=ssn,
@@ -458,13 +448,13 @@ def register_page():
             # Set session for the new user
             session['user_id'] = user.SSN
             # Redirect to home page after successful registration
-            return render_template('register.html', current_user=user, message='Registration succeded')
+            return redirect(url_for('index'))
         except Exception as e:
             db.session.rollback()
-            return render_template('register.html', current_user=user, message=f'Registration failed: {str(e)}')
+            return render_template('register.html', message=f'Registration failed: {str(e)}')
 
     # GET request - show registration form
-    return render_template('register.html', current_user=user)
+    return render_template('register.html')
 
 
 @app.route('/logout')
@@ -473,453 +463,6 @@ def logout():
     return redirect(url_for('index'))
 
 
-@app.route('/api/rooms')
-def get_rooms():
-    rooms = Room.query.all()
-    return jsonify([{'id': room.ID, 'name': room.name} for room in rooms]), 200
-
-
-@app.route('/api/courses')
-def get_courses():
-    courses = Course.query.all()
-    return jsonify([{'name': course.courseName} for course in courses]), 200
-
-
-# Admin booking sayfası için template render
-@app.route('/booking_admin')
-def booking_admin():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-
-    current_user = Users.query.get(session['user_id'])
-    rooms = Room.query.all()
-    courses = Course.query.all()
-    schedules = RoomSchedule.query.all()
-    return render_template(
-        'book_class_admin.html',
-        rooms=rooms,
-        courses=courses,
-        roomSchedule=schedules
-    )
-
-
-# User booking sayfası için template render
-@app.route('/booking_user')
-def booking_user():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-
-    current_user = db.session.get(Users, session['user_id'])
-
-    rooms = Room.query.all()
-    schedules = RoomSchedule.query.all()
-
-    # Serialize rooms
-    serialized_rooms = [
-        {
-            'id': room.ID,
-            'name': room.roomName,
-            # add any other fields you need
-        } for room in rooms
-    ]
-
-    # Serialize schedules (if needed)
-    serialized_schedules = [
-        {
-            'id': sched.id,
-            'room_id': sched.room_id,
-            'start_time': sched.start_time.isoformat(),  # if it's a datetime
-            'end_time': sched.end_time.isoformat()
-        } for sched in schedules
-    ]
-
-    return render_template(
-        'book_class_user.html',
-        rooms=serialized_rooms,
-        roomSchedule=serialized_schedules,
-        userSSN=current_user.SSN
-    )
-
-
-# Admin için özel booking endpoint'i
-@app.route('/booking_admin', methods=['POST'])
-def handle_admin_booking():
-    data = request.get_json()
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-
-    current_user = Users.query.get(session['user_id'])
-    # Validasyonlar
-    required_fields = ['roomId', 'scheduleDate', 'scheduleTime', 'courseName']
-    if not all(field in data for field in required_fields):
-        return jsonify({'error': 'Missing required fields'}), 400
-
-    # Tarih ve saat parsing
-    try:
-        schedule_date = datetime.strptime(data['scheduleDate'], '%Y-%m-%d').date()
-        schedule_time = datetime.strptime(data['scheduleTime'], '%H:%M').time()
-    except ValueError:
-        return jsonify({'error': 'Invalid date/time format'}), 400
-
-    # Mevcut booking kontrolü
-    existing = RoomSchedule.query.filter_by(
-        roomId=data['roomId'],
-        scheduleDate=schedule_date,
-        scheduleTime=schedule_time
-    ).first()
-
-    if existing:
-        return jsonify({'error': 'Timeslot already booked'}), 409
-
-    # Yeni booking oluştur
-    new_booking = RoomSchedule(
-        roomId=data['roomId'],
-        scheduleDate=schedule_date,
-        scheduleTime=schedule_time,
-        bookingType='class',
-        courseName=data['courseName'],
-        isBooked=True
-    )
-
-    db.session.add(new_booking)
-    db.session.commit()
-
-    return jsonify({'message': 'Room booked successfully'}), 201
-
-
-# User için özel booking endpoint'i
-@app.route('/booking_user', methods=['POST'])
-@token_required
-def handle_user_booking(current_user):
-    data = request.get_json()
-
-    # Validasyonlar
-    required_fields = ['roomId', 'scheduleDate', 'scheduleTime']
-    if not all(field in data for field in required_fields):
-        return jsonify({'error': 'Missing required fields'}), 400
-
-    # Tarih ve saat parsing
-    try:
-        schedule_date = datetime.strptime(data['scheduleDate'], '%Y-%m-%d').date()
-        schedule_time = datetime.strptime(data['scheduleTime'], '%H:%M').time()
-    except ValueError:
-        return jsonify({'error': 'Invalid date/time format'}), 400
-
-    # Mevcut booking kontrolü
-    existing = RoomSchedule.query.filter_by(
-        roomId=data['roomId'],
-        scheduleDate=schedule_date,
-        scheduleTime=schedule_time
-    ).first()
-
-    if existing:
-        return jsonify({'error': 'Timeslot already booked'}), 409
-
-    # Yeni booking oluştur
-    new_booking = RoomSchedule(
-        roomId=data['roomId'],
-        scheduleDate=schedule_date,
-        scheduleTime=schedule_time,
-        bookingType='private',
-        userID=current_user.SSN,
-        isBooked=True
-    )
-
-    db.session.add(new_booking)
-    db.session.commit()
-
-    return jsonify({'message': 'Room booked successfully'}), 201
-
-
-# Mevcut /roomschedules endpoint'ini güncelleme
-@api.route('/roomschedules')
-class RoomScheduleList(Resource):
-    @api.marshal_list_with(roomschedule_model)
-    def get(self):
-        """Tüm odaların programını getir (JSON formatında)"""
-        return RoomSchedule.query.all()
-
-
-# ------------ BASIC ROUTES ----------------
-
-@app.route('/')
-def index():
-    if 'user_id' in session:
-        # If user is logged in, redirect to home
-        user = Users.query.get(session['user_id'])
-
-        return render_template('Home.html')
-    # If no session exists, redirect to login
-    return render_template('login.html')
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        # Parse form data
-        ssn = request.form.get('SSN')
-        password = request.form.get('password')
-
-        # Fetch user from the database
-        user = Users.query.get(ssn)
-        if not user or not user.check_password(password):
-            return render_template('login.html', message='Invalid credentials'), 401
-
-        # Set session
-        session['user_id'] = user.SSN
-        user = Users.query.get(session['user_id'])
-
-        # Generate token
-        token = jwt.encode({
-            'ssn': user.SSN,
-            'membershipType': user.membershipType,
-            'exp': datetime.utcnow() + timedelta(hours=24)
-        }, app.config['SECRET_KEY'], algorithm='HS256')
-
-        # If the user is an admin, load register.html
-        if user.membershipType == 'ad':
-            return render_template('register.html', user={
-                'SSN': user.SSN,
-                'firstName': user.firstName,
-                'lastName': user.lastName,
-                'membershipType': user.membershipType,
-                'token': token
-            })
-
-        # Otherwise, load home page
-        return render_template('Home.html', user={
-            'SSN': user.SSN,
-            'firstName': user.firstName,
-            'lastName': user.lastName,
-            'membershipType': user.membershipType,
-            'token': token
-        })
-
-    return render_template('login.html')
-
-
-@app.route('/register', methods=['GET', 'POST'])
-def register_page():
-    if request.method == 'POST':
-        # Get form data
-        ssn = request.form.get('SSN')
-        password = request.form.get('password')
-        first_name = request.form.get('firstName')
-        last_name = request.form.get('lastName')
-        membership_type = request.form.get('membershipType')
-        phone_numbers = request.form.getlist('phoneNo')
-        
-        # Validate required fields
-        if not ssn or not password or not first_name or not last_name:
-            return render_template('register.html',current_user=user, message='All required fields must be filled out')
-        
-        # Check if user already exists
-        if Users.query.get(ssn):
-            return render_template('register.html',current_user=user, message='User with this SSN already exists')
-        
-        # Check if membership type exists
-        if membership_type and not Membership.query.get(membership_type):
-            return render_template('register.html', current_user=user, message='Selected membership type is not valid')
-        
-        print("np")
-        # Create new user
-        user = Users(
-            SSN=ssn,
-            firstName=first_name,
-            lastName=last_name,
-            membershipType=membership_type
-        )
-        user.set_password(password)
-        
-        # Add user to database
-        db.session.add(user)
-        
-        # Add phone numbers if provided
-        for phone in phone_numbers:
-            if phone.strip():  # Only add non-empty phone numbers
-                phone_entry = Phone(phone=phone, userSSN=ssn)
-                db.session.add(phone_entry)
-        
-        # Commit changes to database
-        try:
-            db.session.commit()
-            # Set session for the new user
-            session['user_id'] = user.SSN
-            # Redirect to home page after successful registration
-            return render_template('register.html', current_user=user, message='Registration succeded')
-        except Exception as e:
-            db.session.rollback()
-            return render_template('register.html', current_user=user, message=f'Registration failed: {str(e)}')
-    
-    # GET request - show registration form
-    return render_template('register.html', current_user=user)
-
-@app.route('/logout')
-def logout():
-    session.pop('user_id', None)
-    return redirect(url_for('index'))
-
-
-@app.route('/api/rooms')
-def get_rooms():
-    rooms = Room.query.all()
-    return jsonify([{'id': room.ID, 'name': room.name} for room in rooms]), 200
-
-@app.route('/api/courses')
-def get_courses():
-    courses = Course.query.all()
-    return jsonify([{'name': course.courseName} for course in courses]), 200
-
-# Admin booking sayfası için template render
-@app.route('/booking_admin')
-def booking_admin():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-
-    current_user = Users.query.get(session['user_id'])
-    rooms = Room.query.all()
-    courses = Course.query.all()
-    schedules = RoomSchedule.query.all()
-    return render_template(
-        'book_class_admin.html',
-        rooms=rooms,
-        courses=courses,
-        roomSchedule=schedules
-    )
-
-# User booking sayfası için template render
-@app.route('/booking_user')
-def booking_user():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-
-    current_user = db.session.get(Users, session['user_id'])
-
-    rooms = Room.query.all()
-    schedules = RoomSchedule.query.all()
-
-    # Serialize rooms
-    serialized_rooms = [
-        {
-            'id': room.ID,
-            'name': room.roomName,
-            # add any other fields you need
-        } for room in rooms
-    ]
-
-    # Serialize schedules (if needed)
-    serialized_schedules = [
-        {
-            'id': sched.id,
-            'room_id': sched.room_id,
-            'start_time': sched.start_time.isoformat(),  # if it's a datetime
-            'end_time': sched.end_time.isoformat()
-        } for sched in schedules
-    ]
-
-    return render_template(
-        'book_class_user.html',
-        rooms=serialized_rooms,
-        roomSchedule=serialized_schedules,
-        userSSN=current_user.SSN
-    )
-
-
-# Admin için özel booking endpoint'i
-@app.route('/booking_admin', methods=['POST'])
-
-def handle_admin_booking():
-    data = request.get_json()
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-
-    current_user = Users.query.get(session['user_id'])
-    # Validasyonlar
-    required_fields = ['roomId', 'scheduleDate', 'scheduleTime', 'courseName']
-    if not all(field in data for field in required_fields):
-        return jsonify({'error': 'Missing required fields'}), 400
-    
-    # Tarih ve saat parsing
-    try:
-        schedule_date = datetime.strptime(data['scheduleDate'], '%Y-%m-%d').date()
-        schedule_time = datetime.strptime(data['scheduleTime'], '%H:%M').time()
-    except ValueError:
-        return jsonify({'error': 'Invalid date/time format'}), 400
-
-    # Mevcut booking kontrolü
-    existing = RoomSchedule.query.filter_by(
-        roomId=data['roomId'],
-        scheduleDate=schedule_date,
-        scheduleTime=schedule_time
-    ).first()
-    
-    if existing:
-        return jsonify({'error': 'Timeslot already booked'}), 409
-
-    # Yeni booking oluştur
-    new_booking = RoomSchedule(
-        roomId=data['roomId'],
-        scheduleDate=schedule_date,
-        scheduleTime=schedule_time,
-        bookingType='class',
-        courseName=data['courseName'],
-        isBooked=True
-    )
-    
-    db.session.add(new_booking)
-    db.session.commit()
-    
-    return jsonify({'message': 'Room booked successfully'}), 201
-
-# User için özel booking endpoint'i
-@app.route('/booking_user', methods=['POST'])
-@token_required
-def handle_user_booking(current_user):
-    data = request.get_json()
-    
-    # Validasyonlar
-    required_fields = ['roomId', 'scheduleDate', 'scheduleTime']
-    if not all(field in data for field in required_fields):
-        return jsonify({'error': 'Missing required fields'}), 400
-    
-    # Tarih ve saat parsing
-    try:
-        schedule_date = datetime.strptime(data['scheduleDate'], '%Y-%m-%d').date()
-        schedule_time = datetime.strptime(data['scheduleTime'], '%H:%M').time()
-    except ValueError:
-        return jsonify({'error': 'Invalid date/time format'}), 400
-
-    # Mevcut booking kontrolü
-    existing = RoomSchedule.query.filter_by(
-        roomId=data['roomId'],
-        scheduleDate=schedule_date,
-        scheduleTime=schedule_time
-    ).first()
-    
-    if existing:
-        return jsonify({'error': 'Timeslot already booked'}), 409
-
-    # Yeni booking oluştur
-    new_booking = RoomSchedule(
-        roomId=data['roomId'],
-        scheduleDate=schedule_date,
-        scheduleTime=schedule_time,
-        bookingType='private',
-        userID=current_user.SSN,
-        isBooked=True
-    )
-    
-    db.session.add(new_booking)
-    db.session.commit()
-    
-    return jsonify({'message': 'Room booked successfully'}), 201
-
-# Mevcut /roomschedules endpoint'ini güncelleme
-@api.route('/roomschedules')
-class RoomScheduleList(Resource):
-    @api.marshal_list_with(roomschedule_model)
-    def get(self):
-        """Tüm odaların programını getir (JSON formatında)"""
-        return RoomSchedule.query.all()
 # ------------ AUTHENTICATION ENDPOINTS ----------------
 
 @api.route('/auth/register')
@@ -951,58 +494,6 @@ class Register(Resource):
 
         return {'message': 'User registered successfully'}, 201
 
-
-@api.route('/auth/login')
-class Login(Resource):
-    @api.expect(login_model)
-    def post(self):
-        if request.is_json:
-            data = request.json
-        else:
-            data = request.form
-        """Login user, generate token, and render template"""
-        # Parse form data
-        ssn = data.get('SSN')
-        password = data.get('password')
-
-        # Fetch user from the database
-        user = Users.query.get(ssn)
-        if not user or not user.check_password(password):
-            # Render login page with error message for invalid credentials
-            return render_template('login.html', message='Invalid credentials'), 401
-
-        # Generate token
-        token = jwt.encode({
-            'ssn': user.SSN,
-            'membershipType': user.membershipType,
-            'exp': datetime.utcnow() + timedelta(hours=24)
-        }, app.config['SECRET_KEY'], algorithm='HS256')
-
-        # Render dashboard template with user data and token
-        return render_template('Home.html', user={
-            'SSN': user.SSN,
-            'firstName': user.firstName,
-            'lastName': user.lastName,
-            'membershipType': user.membershipType,
-            'token': token
-        })
-
-@api.route('/auth/logout')
-class Logout(Resource):
-    @api.doc(security='Bearer')
-    @token_required
-    def post(self, current_user):
-        """Logout user and blacklist the token"""
-        # Extract the token from the Authorization header
-        token = request.headers.get('Authorization').split(" ")[1]
-
-        # Check if token is already blacklisted
-        if is_token_blacklisted(token):
-            abort(400, 'Token is already blacklisted')
-
-        # Blacklist the token
-        blacklist_token(token)
-        return {'message': 'Successfully logged out'}, 200
 
 # ------------ API ENDPOINTS (Updated with Authentication) -----------------
 
@@ -1113,30 +604,41 @@ class UsersResource(Resource):
 
 
 # -------- Phone Endpoints --------
-@api.route('/phones')
-class PhoneList(Resource):
-    @api.marshal_list_with(phone_model)
-    @api.doc(security='Bearer')
-    @token_required
-    @admin_required
-    def get(self, current_user):
-        """Get all phones"""
-        return Phone.query.all()
+@app.route('/phones', methods=['GET'])
+@token_required
+@admin_required
+def get_phones(current_user):
+    """Get all phones"""
+    phones = Phone.query.all()
+    result = [
+        {
+            "phone": phone.phone,
+            "userSSN": phone.userSSN
+        } for phone in phones
+    ]
+    return jsonify(result), 200
 
-    @api.expect(phone_model)
-    @api.doc(security='Bearer')
-    @token_required
-    def post(self, current_user):
-        """Create a new phone"""
-        data = api.payload
-        if Phone.query.get(data['phone']):
-            abort(400, 'Phone number already exists')
-        if data.get('userSSN') and not Users.query.get(data['userSSN']):
-            abort(400, 'User not found')
-        phone = Phone(**data)
-        db.session.add(phone)
-        db.session.commit()
-        return {'message': 'Phone created'}, 201
+
+@app.route('/phones', methods=['POST'])
+@token_required
+def create_phone(current_user):
+    """Create a new phone"""
+    data = request.get_json()
+
+    if not data or 'phone' not in data:
+        abort(400, 'Missing phone number')
+
+    if Phone.query.get(data['phone']):
+        abort(400, 'Phone number already exists')
+
+    if data.get('userSSN') and not Users.query.get(data['userSSN']):
+        abort(400, 'User not found')
+
+    phone = Phone(**data)
+    db.session.add(phone)
+    db.session.commit()
+
+    return jsonify({'message': 'Phone created'}), 201
 
 
 @api.route('/phones/<string:phone_number>')
@@ -1335,7 +837,145 @@ class CourseResource(Resource):
         db.session.commit()
         return {'message': 'Course updated'}
 
+@app.route('/booking_admin')
+def booking_admin():
+    # Fetch all courses
+    courses = [
+        {
+            "name": course.courseName  # Use courseName for both key and value
+        }
+        for course in Course.query.all()
+    ]
 
+    # Fetch all rooms
+    rooms = [
+        {
+            "id": room.ID,
+            "name": room.roomName
+        }
+        for room in Room.query.all()
+    ]
+
+    # Fetch all scheduled bookings
+    room_schedule = [
+        {
+            "roomId": schedule.roomId,
+            "scheduleDate": schedule.scheduleDate.strftime('%Y-%m-%d'),
+            "scheduleTime": schedule.scheduleTime.strftime('%H:%M')
+        }
+        for schedule in RoomSchedule.query.all()
+    ]
+    print(courses)
+    print(rooms)
+    print(room_schedule)
+    return render_template(
+        'book_class_admin.html',
+        courses=courses,
+        rooms=rooms,
+        roomSchedule=room_schedule
+    )
+@app.route('/booking_admin', methods=['POST'])
+def create_booking_admin():
+    data = request.get_json()
+
+    required_fields = ['roomId', 'scheduleDate', 'scheduleTime', 'courseName']
+    if not all(field in data for field in required_fields):
+        return jsonify({'error': 'Missing fields'}), 400
+
+    room_id = data['roomId']
+    course_name = data['courseName']
+    schedule_date = datetime.strptime(data['scheduleDate'], '%Y-%m-%d').date()
+    schedule_time = datetime.strptime(data['scheduleTime'], '%H:%M').time()
+
+    # Check if the timeslot is already booked
+    existing = RoomSchedule.query.filter_by(
+        roomId=room_id,
+        scheduleDate=schedule_date,
+        scheduleTime=schedule_time
+    ).first()
+
+    if existing:
+        return jsonify({'error': 'Timeslot already booked'}), 409
+
+    # Save new booking
+    new_booking = RoomSchedule(
+        roomId=room_id,
+        scheduleDate=schedule_date,
+        scheduleTime=schedule_time,
+        bookingType='private',
+        courseName=course_name,
+        isBooked=True
+    )
+    db.session.add(new_booking)
+    db.session.commit()
+
+    return jsonify({'message': 'Booking confirmed'}), 201
+
+@app.route('/booking_user', methods=['GET'])
+def booking_user():
+
+    userSSN = session['user_id']
+
+    #rooms
+    rooms = [
+        {"id": room.ID, "name": room.roomName}
+        for room in Room.query.all()
+    ]
+
+    # booked slots
+    room_schedule = [
+        {
+            "roomId": rs.roomId,
+            "scheduleDate": rs.scheduleDate.strftime('%Y-%m-%d'),
+            "scheduleTime": rs.scheduleTime.strftime('%H:%M')
+        }
+        for rs in RoomSchedule.query.all()
+    ]
+
+    return render_template(
+        'book_class_user.html',
+        rooms=rooms,
+        roomSchedule=room_schedule,
+        userSSN=userSSN
+    )
+
+@app.route('/booking_user', methods=['POST'])
+def create_booking_user():
+    data = request.get_json()
+
+    required_fields = ['roomId', 'scheduleDate', 'scheduleTime', 'userID']
+    if not all(field in data for field in required_fields):
+        return jsonify({'error': 'Missing fields'}), 400
+
+    room_id = data['roomId']
+    schedule_date = datetime.strptime(data['scheduleDate'], '%Y-%m-%d').date()
+    schedule_time = datetime.strptime(data['scheduleTime'], '%H:%M').time()
+    user_id = data['userID']
+
+    # Check if the timeslot is already booked
+    existing = RoomSchedule.query.filter_by(
+        roomId=room_id,
+        scheduleDate=schedule_date,
+        scheduleTime=schedule_time
+    ).first()
+
+    if existing:
+        return jsonify({'error': 'Timeslot already booked'}), 409
+
+    # Save booking
+    new_booking = RoomSchedule(
+        roomId=room_id,
+        scheduleDate=schedule_date,
+        scheduleTime=schedule_time,
+        bookingType='private',
+        userID=user_id,
+        courseName=None,
+        isBooked=True
+    )
+    db.session.add(new_booking)
+    db.session.commit()
+
+    return jsonify({'message': 'Booking confirmed'}), 201
 # -------- RoomSchedule Endpoints --------
 @api.route('/roomschedules')
 class RoomScheduleList(Resource):
@@ -1586,6 +1226,23 @@ class IndexResource(Resource):
 
         return make_response(render_template('Home.html', activities=activities), 200, {'Content-Type': 'text/html'})
 
+#----------SCHEDULE------------
+@app.route('/schedule')
+def get_schedule():
+    """Get all scheduled courses in a specific format"""
+    schedules = RoomSchedule.query.join(Course, RoomSchedule.courseName == Course.courseName) \
+        .filter(RoomSchedule.courseName.isnot(None)).all()
+
+    schedule_list = [
+        {
+            "name": schedule.courseName,
+            "date": f"{schedule.scheduleDate.month}-{schedule.scheduleDate.day}",
+            "time": schedule.scheduleTime.strftime('%H:%M')
+        }
+        for schedule in schedules
+    ]
+
+    return jsonify(schedule_list), 200
 
 # ------------ MAIN APPLICATION ----------------
 
@@ -1652,4 +1309,4 @@ if __name__ == '__main__':
             print(f"Error initializing database: {e}")
 
     # Run the application
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    app.run(debug=True, host='0.0.0.0', port=5000)
