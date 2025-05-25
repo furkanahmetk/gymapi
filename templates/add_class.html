@@ -10,7 +10,7 @@
     rel="stylesheet">
 
 <head>
-    <title>Add Instructor</title>
+    <title>Add Course</title>
     <link rel="stylesheet" type="text/css" href="../static/style.css">
 </head>
 
@@ -19,7 +19,7 @@
         <h1>Metu Gym Portal</h1>
     </div>
 
-     <div class="scrollHeader">
+    <div class="scrollHeader">
         <table class="Bar">
             <tr>
                 <th>
@@ -64,34 +64,45 @@
     <br>
     <br>
     <div class="CenterArea">
-        <form name="formRegistration" method="POST" action="/instructors">
-            <label><b>SSN</b></label>
-            <input id="ssn" type="text" name="SSN" autocomplete="current-userName">
-            <span id="usernameError" style="color: red;"></span>
+        <form name="formRegistration" method="POST" action="/add-courses">
+
+            <label><b>Class Name</b></label>
+            <input id="class name" type="text" name="className">
 
             <br><br>
 
-            <label><b>First Name</b></label>
-            <input id="first name" type="text" name="firstName" autocomplete="current-firstName">
-            <span id="firstNameError" style="color: red;"></span>
+            <label><b>Capacity</b></label>
+            <input id="capacity" type="number" name="capacity">
 
             <br><br>
 
-            <label><b>Last Name</b></label>
-            <input id="lastname" type="text" name="lastName" autocomplete="current-lastName">
-            <span id="lastNameError" style="color: red;"></span>
+            <!-- Instructor Dropdown -->
+            <label for="instructor">Select Instructor:</label>
+            <select id="instructor" name="instructor" class="drop-Box">
+                {% for instructor in instructors %}
+                <option value="{{ instructor.SSN }}">{{ instructor.name }}</option>
+                {% endfor %}
+            </select>
 
             <br><br>
 
-            <label><b>Phone No</b></label>
-            <input id="phoneNum" type="text" name="phoneNo" autocomplete="current-phoneNo">
-            <span id="phoneNoError" style="color: red;"></span>
-
+            <!-- Room Dropdown -->
+            <label for="room">Select Room:</label>
+            <select id="room" name="room" class="drop-Box">
+                {% for room in rooms %}
+                <option value="{{ room.ID }}">{{ room.Name }} ({{ room.ID }})</option>
+                {% endfor %}
+            </select>
 
             <br><br>
 
-            <input class="button-main" type="submit" value="Submit" id="log">
-            <input class="button-main" type="reset" value="Reset" id="log2">
+            <input type="checkbox" id="check" name="check">
+            <span>Special</span>
+
+            <br><br>
+
+            <input class="button-main" type="submit" value="Submit">
+            <input class="button-main" type="reset" value="Reset">
 
         </form>
     </div>

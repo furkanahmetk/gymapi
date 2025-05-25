@@ -1,78 +1,64 @@
 <!DOCTYPE html>
 
 <html>
-<link rel="stylesheet" href="assets/toolkit/styles/toolkit.css">
+<link href="assets/toolkit/styles/toolkit.css" rel="stylesheet"/>
 <script src="assets/toolkit/scripts/toolkit.js"></script>
 <script src="assets/toolkit/styles/bootstrap.css"></script>
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css" />
-<link
-    href="https://fonts.googleapis.com/css?family=Roboto+Slab:100,300,400,700|Roboto:100,100i,300,300i,400,400i,500,500i,700,700i,900,900i&subset=latin-ext"
-    rel="stylesheet">
-
-
-
+<link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css?family=Roboto+Slab:100,300,400,700|Roboto:100,100i,300,300i,400,400i,500,500i,700,700i,900,900i&amp;subset=latin-ext" rel="stylesheet"/>
 <head>
-    <title>Booking session</title>
-    <link rel="stylesheet" type="text/css" href="../static/style.css">
+<title>Booking session</title>
+<link href="../static/style.css" rel="stylesheet" type="text/css"/>
 </head>
-
 <body>
-    <div class="header">
-        <h1>Metu Gym Portal</h1>
-    </div>
-
-    <div class="scrollHeader">
-        <table class="Bar">
-            <tr>
-                <th>
-                    <a href="/index" class="Item">
-                        <h3><u>Home Page</u></h3>
-                    </a>
-                </th>
-                <th>
-                    <a href="/booking_user" class="Item"><!--Cuurnt page-->
-                        <h3><u>Book session</u></h3>
-                    </a>
-                </th>
-                <th>
-                    <a href="/classes" class="Item">
-                        <h3><u>classes</u></h3>
-                    </a>
-                </th>
-                <th>
-                    <a href="/logout" class="Item">
-                        <h3><u>Logout</u></h3>
-                    </a>
-                </th>
-            </tr>
-        </table>
-    </div>
-    <br>
-    <br>
-    <br>
-
-    <div class="booking-container">
-        <h1>Room Booking System</h1>
-
-        <div class="date-selector">
-            <label for="booking-date">Select Date:</label>
-            <select class="drop-Box" id="booking-date"></select>
-        </div>
-
-        <div class="timeslot-grid" id="timeslot-grid"></div>
-
-        <div class="room-selector">
-            <label for="room-select">Select Room:</label>
-            <select class="drop-Box" id="room-select" disabled></select>
-        </div>
-
-        <button class="button-book" id="book-button" disabled>Book Room</button>
-
-        <div class="confirmation" id="confirmation"></div>
-    </div>
-    <br><br><br>
-
-    <script>
+<div class="header">
+<h1>Metu Gym Portal</h1>
+</div>
+<div class="scrollHeader">
+<table class="Bar">
+<tr>
+<th>
+<a class="Item" href="/index">
+<h3><u>Home Page</u></h3>
+</a>
+</th>
+<th>
+<a class="Item" href="/booking_user"><!--Cuurnt page-->
+<h3><u>Book session</u></h3>
+</a>
+</th>
+<th>
+<a class="Item" href="/classes">
+<h3><u>classes</u></h3>
+</a>
+</th>
+<th>
+<a class="Item" href="/logout">
+<h3><u>Logout</u></h3>
+</a>
+</th>
+</tr>
+</table>
+</div>
+<br/>
+<br/>
+<br/>
+<div class="booking-container">
+<h1>Room Booking System</h1>
+<div class="date-selector">
+<label for="booking-date">Select Date:</label>
+<select class="drop-Box" id="booking-date"></select>
+</div>
+<div class="timeslot-grid" id="timeslot-grid"></div>
+<div class="room-selector">
+<label for="room-select">Select Room:</label>
+<select class="drop-Box" id="room-select"></select>
+</div>
+<button class="button-book" disabled="" id="book-button">Book Room</button>
+<div class="confirmation" id="confirmation"></div>
+</div>
+<br/><br/><br/><!--patapim-->
+<script>
         // Current user data
         const currentUser = {
             SSN: '{{ userSSN }}' // Flask will inject this
@@ -214,6 +200,7 @@
         async function submitBooking() {
             const selectedDate = document.getElementById('booking-date').value;
             const selectedTimeslot = document.querySelector('.timeslot.selected');
+            const selectedTime = selectedTimeslot.dataset.time;
             if (!selectedTimeslot) {
                 alert('Please select a time slot first');
                 return;
@@ -315,5 +302,4 @@
         refreshTimeslots();
     </script>
 </body>
-
-</html>
+</link></html>
