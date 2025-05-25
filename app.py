@@ -770,6 +770,55 @@ def drop(course_name):
         db.session.commit()
 
     return redirect(url_for('register_to_class'))
+
+
+@app.route('/profile-edit', methods=['POST'])
+def edit_user_details():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    ssn = request.form.get('ssn')
+    pwd = request.form.get('pwd')
+    first_name = request.form.get('firstName')
+    last_name = request.form.get('lastName')
+    phone1 = request.form.get('phone1')
+    phone2 = request.form.get('phone2')
+    phone3 = request.form.get('phone3')
+    membership_type = request.form.get('membershipType')
+
+    user = Users.query.get_or_404(session['user_id'])
+
+    if pwd:
+        user.password_hash = generate_password_hash(pwd)
+    if first_name:
+        user.firstName = first_name
+    if last_name:
+        user.lastName = last_name
+    if membership_type:
+        if not Membership.query.get(membership_type):
+            return render_template('edit_user_details.html', user=user, message="Invalid membership type", success=False)
+        user.membershipType = membership_type
+
+    # Update phones
+    Phone.query.filter_by(userSSN=ssn).delete()
+    for phone in [phone1, phone2, phone3]:
+        if phone:
+            db.session.add(Phone(phone=phone, userSSN=ssn))
+
+    db.session.commit()
+
+    updated_user = Users.query.get(ssn)
+
+    return render_template('edit_user_details.html', user=updated_user, message="Profile updated successfully", success=True)
+
+@app.route('/edit_user')
+def edit_user_page():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    current_user = db.session.get(Users, session['user_id'])
+
+    return render_template('edit_user_details.html', user=current_user)
 # -------- Room Endpoints --------
 @api.route('/rooms')
 class RoomList(Resource):
