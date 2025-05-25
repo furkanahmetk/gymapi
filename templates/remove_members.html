@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+
+<html>
+<link rel="stylesheet" href="assets/toolkit/styles/toolkit.css">
+<script src="assets/toolkit/scripts/toolkit.js"></script>
+<script src="assets/toolkit/styles/bootstrap.css"></script>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css" />
+<link
+    href="https://fonts.googleapis.com/css?family=Roboto+Slab:100,300,400,700|Roboto:100,100i,300,300i,400,400i,500,500i,700,700i,900,900i&subset=latin-ext"
+    rel="stylesheet">
+
+<head>
+    <title>Remove Member</title>
+    <link rel="stylesheet" type="text/css" href="../static/style.css">
+</head>
+
+<body>
+    <div class="header">
+        <h1>Metu Gym Portal</h1>
+    </div>
+
+    
+     <div class="scrollHeader">
+        <table class="Bar">
+            <tr>
+                <th>
+                    <a href="/register" class="Item">
+                        <h3><u>Register user</u></h3>
+                    </a>
+                </th>
+                <th>
+                    <a href="/booking_admin" class="Item">
+                        <h3><u>Book session</u></h3>
+                    </a>
+                </th>
+                <th>
+                    <a href="/classes" class="Item">
+                        <h3><u>classes</u></h3>
+                    </a>
+                </th>
+                <th>
+                    <a href="/add_instructor" class="Item">
+                        <h3><u>Add instructor</u></h3>
+                    </a>
+                </th>
+                <th>
+                    <a href="/add_class" class="Item">
+                        <h3><u>Add class</u></h3>
+                    </a>
+                </th>
+                <th>
+                    <a href="/remove_member" class="Item">
+                        <h3><u>Remove member</u></h3>
+                    </a>
+                </th>
+                <th>
+                    <a href="/logout" class="Item">
+                        <h3><u>Logout</u></h3>
+                    </a>
+                </th>
+            </tr>
+        </table>
+    </div>
+    <br>
+    <br>
+    <br>
+    <div class="CenterArea">
+        <table id="users-table">
+            <thead style='color:#cf0a2c;'>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>SSN</th>
+                <th>Remove user</th>
+            </thead>
+            <tbody>
+                {% for row in users%}
+                <tr>
+                    <th>{{ row[1] }}</th>
+                    <th>{{ row[2] }}</th>
+                    <th>{{ row[0]}}</th>
+
+                    <td>
+                        <a href="/remove/{{ row[0] }}" style='color:#cf0a2c;'>remove</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <br><br>
+    <br><br>
+    <div class="CenterArea">
+        <table id="instructors-table">
+            <thead style='color:#cf0a2c;'>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>SSN</th>
+                <th>Remove instructor</th>
+            </thead>
+            <tbody>
+                {% for row in instructors%}
+                <tr>
+                    <th>{{ row[1] }}</th>
+                    <th>{{ row[2] }}</th>
+                    <th>{{ row[0]}}</th>
+
+                    <td>
+                        <a href="/remove/{{ row[0] }}" style='color:#cf0a2c;'>remove</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <br><br>
+    <br><br>
+    <div class="CenterArea">
+        <table id="courses-table">
+            <thead style='color:#cf0a2c;'>
+                <th>Course Name</th>
+
+                <th>Remove course</th>
+            </thead>
+            <tbody>
+                {% for row in instructors%}
+                <tr>
+                    <th>{{ row[0] }}</th>
+
+                    <td>
+                        <a href="/remove/{{ row[0] }}" style='color:#cf0a2c;'>remove</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <br><br>
+    <br><br>
+
+
+</body>
+
+</html>

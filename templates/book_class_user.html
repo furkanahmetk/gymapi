@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+
+<html>
+<link rel="stylesheet" href="assets/toolkit/styles/toolkit.css">
+<script src="assets/toolkit/scripts/toolkit.js"></script>
+<script src="assets/toolkit/styles/bootstrap.css"></script>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css" />
+<link
+    href="https://fonts.googleapis.com/css?family=Roboto+Slab:100,300,400,700|Roboto:100,100i,300,300i,400,400i,500,500i,700,700i,900,900i&subset=latin-ext"
+    rel="stylesheet">
+
+
+
+<head>
+    <title>Booking session</title>
+    <link rel="stylesheet" type="text/css" href="../static/style.css">
+</head>
+
+<body>
+    <div class="header">
+        <h1>Metu Gym Portal</h1>
+    </div>
+
+    <div class="scrollHeader">
+        <table class="Bar">
+            <tr>
+                <th>
+                    <a href="/index" class="Item">
+                        <h3><u>Home Page</u></h3>
+                    </a>
+                </th>
+                <th>
+                    <a href="/booking_user" class="Item"><!--Cuurnt page-->
+                        <h3><u>Book session</u></h3>
+                    </a>
+                </th>
+                <th>
+                    <a href="/classes" class="Item">
+                        <h3><u>classes</u></h3>
+                    </a>
+                </th>
+                <th>
+                    <a href="/logout" class="Item">
+                        <h3><u>Logout</u></h3>
+                    </a>
+                </th>
+            </tr>
+        </table>
+    </div>
+    <br>
+    <br>
+    <br>
+
+    <div class="booking-container">
+        <h1>Room Booking System</h1>
+
+        <div class="date-selector">
+            <label for="booking-date">Select Date:</label>
+            <select class="drop-Box" id="booking-date"></select>
+        </div>
+
+        <div class="timeslot-grid" id="timeslot-grid"></div>
+
+        <div class="room-selector">
+            <label for="room-select">Select Room:</label>
+            <select class="drop-Box" id="room-select" disabled></select>
+        </div>
+
+        <button class="button-book" id="book-button" disabled>Book Room</button>
+
+        <div class="confirmation" id="confirmation"></div>
+    </div>
+    <br><br><br><!--patapim-->
+
+    <script>
+        // Current user data
+        const currentUser = {
+            SSN: '{{ userSSN }}' // Flask will inject this
+        };
+
+        // room data
+        const rooms = JSON.parse('{{ rooms | tojson | safe }}').map(room => ({
+            id: room.roomId || room.id, // Adjust based on your actual model
+            name: room.name
+        }));
+
+        // booked slots
+        const bookedSlots = JSON.parse('{{ roomSchedule | tojson | safe }}').map(booking => ({
+            roomId: booking.roomId,
+            date: booking.scheduleDate, // Adjust field names as needed
+            time: booking.scheduleTime
+        }));
+        // initializing the page
+        document.addEventListener('DOMContentLoaded', function () {
+            setupDateDropdown();
+            populateRoomDropdown();
+            setupEventListeners();
+            refreshTimeslots(); // Initial load
+        });
+
+        // Setting up date dropdown (today + next 2 days)
+        function setupDateDropdown() {
+            const dateSelect = document.getElementById('booking-date');
+
+            for (let i = 0; i < 3; i++) {
+                const date = new Date();
+                date.setDate(date.getDate() + i);
+
+                const option = document.createElement('option');
+                option.value = getFormattedDate(i);
+                option.textContent = formatDateDisplay(date);
+                dateSelect.appendChild(option);
+            }
+
+            // Refresh timeslots when date changes
+            dateSelect.addEventListener('change', refreshTimeslots);
+        }
+
+        // Populate room dropdown
+        function populateRoomDropdown() {
+            const roomSelect = document.getElementById('room-select');
+
+            rooms.forEach(room => {
+                const option = document.createElement('option');
+                option.value = room.id;
+                option.textContent = room.name;
+                roomSelect.appendChild(option);
+            });
+        }
+
+        // Create timeslots (9am to 9pm)
+        function refreshTimeslots() {
+            const timeslotGrid = document.getElementById('timeslot-grid');
+            timeslotGrid.innerHTML = '';
+            const selectedDate = document.getElementById('booking-date').value;
+            const selectedRoom = document.getElementById('room-select').value;
+
+            // Only proceed if a room is selected
+            if (!selectedRoom) return;
+
+            for (let hour = 9; hour <= 21; hour++) {
+                const timeslot = document.createElement('div');
+                timeslot.className = 'timeslot';
+                timeslot.dataset.time = `${hour}:00`;
+
+                // Format time display
+                const displayHour = hour > 12 ? hour - 12 : hour;
+                const ampm = hour >= 12 ? 'PM' : 'AM';
+                timeslot.textContent = `${displayHour}:00 ${ampm}`;
+
+                // Check if this timeslot is booked FOR THE SELECTED ROOM AND DATE
+                const isBooked = bookedSlots.some(slot =>
+                    slot.roomId == selectedRoom && // Note: == instead of === to handle string/number comparison
+                    slot.date === selectedDate &&
+                    slot.time === `${hour}:00`);
+
+                if (isBooked) {
+                    timeslot.classList.add('booked');
+                    timeslot.title = 'This timeslot is already booked';
+                } else {
+                    timeslot.addEventListener('click', selectTimeslot);
+                }
+
+                timeslotGrid.appendChild(timeslot);
+            }
+        }
+
+        // Handle timeslot selection
+        function selectTimeslot(e) {
+            // Remove previous selection
+            document.querySelectorAll('.timeslot.selected').forEach(slot => {
+                slot.classList.remove('selected');
+            });
+
+            // Select new timeslot
+            e.target.classList.add('selected');
+
+            // Enable room selection
+            document.getElementById('room-select').disabled = false;
+
+            // Enable book button if room is already selected
+            if (document.getElementById('room-select').value) {
+                document.getElementById('book-button').disabled = false;
+            }
+        }
+
+        // Set up event listeners
+        function setupEventListeners() {
+            const roomSelect = document.getElementById('room-select');
+
+            // Enable/disable timeslots when room changes
+            roomSelect.addEventListener('change', function () {
+                if (this.value) {
+                    refreshTimeslots();
+                    document.getElementById('book-button').disabled = !document.querySelector('.timeslot.selected');
+                } else {
+                    document.getElementById('timeslot-grid').innerHTML = '';
+                    document.getElementById('book-button').disabled = true;
+                }
+            });
+
+            // Update timeslots when date changes (if room is selected)
+            document.getElementById('booking-date').addEventListener('change', function () {
+                if (roomSelect.value) {
+                    refreshTimeslots();
+                }
+            });
+
+            // Keep existing book button listener
+            document.getElementById('book-button').addEventListener('click', submitBooking);
+        }
+
+        // Submit booking to server
+        async function submitBooking() {
+            const selectedDate = document.getElementById('booking-date').value;
+            const selectedTimeslot = document.querySelector('.timeslot.selected');
+            if (!selectedTimeslot) {
+                alert('Please select a time slot first');
+                return;
+            }
+            const selectedRoom = parseInt(document.getElementById('room-select').value);
+            const selectedRoomName = document.getElementById('room-select').selectedOptions[0].text;
+
+            // Verify the slot is still available
+            const isAlreadyBooked = bookedSlots.some(slot =>
+                slot.roomId === selectedRoom &&
+                slot.date === selectedDate &&
+                slot.time === selectedTime);
+
+            if (isAlreadyBooked) {
+                alert('This timeslot was just booked by someone else. Please select another time.');
+                refreshTimeslots();
+                return;
+            }
+
+            try {
+                //booking data
+                const bookingData = {
+                    roomId: selectedRoom,
+                    scheduleDate: selectedDate,
+                    scheduleTime: selectedTime,
+                    bookingType: 'private',
+                    userID: currentUser.SSN
+                };
+
+                // Send to Flask backend
+                const response = await fetch('/booking_user', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(bookingData)
+                });
+
+                if (!response.ok) throw new Error('Booking failed');
+
+                const result = await response.json();
+                console.log('Booking confirmed:', result);
+
+                bookedSlots.push({
+                    roomId: selectedRoom,
+                    date: selectedDate,
+                    time: selectedTime
+                });
+            
+            } catch (error) {
+                console.error('Booking error:', error);
+                alert(error.message);
+            }
+        }
+
+        // Helper functions
+        function getFormattedDate(daysFromToday) {
+            const date = new Date();
+            date.setDate(date.getDate() + daysFromToday);
+            return date.toISOString().split('T')[0]; // yyyy-MM-dd
+        }
+
+        function formatDateDisplay(date) {
+            return date.toLocaleDateString('en-US', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        function simulateServerRequest(data) {
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    console.log('Server would insert:', `
+                        INSERT INTO RoomSchedule(
+                            scheduleID, 
+                            roomId, 
+                            scheduleDate, 
+                            scheduleTime, 
+                            bookingType, 
+                            isBooked, 
+                            userID
+                        ) VALUES (
+                            '${data.scheduleID}', 
+                            '${data.roomId}', 
+                            '${data.scheduleDate}', 
+                            '${data.scheduleTime}', 
+                            '${data.bookingType}', 
+                            ${data.isBooked}, 
+                            '${data.userID}'
+                        )
+                    `);
+                    resolve();
+                }, 500);
+            });
+        }
+
+        // Initialize timeslots for today
+        refreshTimeslots();
+    </script>
+</body>
+
+</html>

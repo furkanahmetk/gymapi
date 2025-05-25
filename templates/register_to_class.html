@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+
+<html>
+    <link rel="stylesheet" href="assets/toolkit/styles/toolkit.css">
+    <script src="assets/toolkit/scripts/toolkit.js"></script> 
+    <script src="assets/toolkit/styles/bootstrap.css"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css"/> 
+    <link href="https://fonts.googleapis.com/css?family=Roboto+Slab:100,300,400,700|Roboto:100,100i,300,300i,400,400i,500,500i,700,700i,900,900i&subset=latin-ext" rel="stylesheet">
+
+    <head>
+        <title>Enroll to Class</title>
+        <link rel="stylesheet" type="text/css" href="../static/style.css">
+    </head>
+
+    <body>
+        <div class="header">
+            <h1>Metu Gym Portal</h1>
+        </div>
+        
+         <div class="scrollHeader">
+            <table class="Bar">
+                <tr>
+                    <th>
+                        <a href="/index" class="Item">
+                            <h3><u >Home Page</u></h3>
+                        </a>
+                    </th>
+                    <th>
+                        <a href="/booking_user" class="Item">
+                            <h3><u >Book session</u></h3>
+                        </a>
+                    </th>
+                    <th>
+                        <a href="/classes" class="Item">
+                            <h3><u >classes</u></h3>
+                        </a>
+                    </th>
+                    <th>
+                        <a href="/logout" class="Item">
+                            <h3><u >Logout</u></h3>
+                        </a>
+                    </th>
+                </tr>
+            </table>    
+        </div>
+        <br>
+        <br>
+        <br>
+         <div class="CenterArea">
+        <table id="courses-table">
+            <thead style='color:#cf0a2c;'>
+                <th>Class Name</th>
+                <th>Hours</th>
+                <th>Instructor</th>
+                <th>Is Special?</th>
+                <th>enroll</th>
+            </thead>
+            <tbody>
+                {% for row in data%}
+                <tr>
+                    <th>{{ row[0] }}</th>
+                    <th>{{ row[1] }}</th>
+                    <th>{{ row[2]}}</th>
+                    <th>{{ row[3]}}</th>
+                    <th>
+                        {% if row[4] == 1 %}
+                            Special
+                        {% else %}
+                            Not Special
+                        {% endif %}
+                    </th>
+                    <td>
+                        {% if row[5] == 1 %}<!-- session kullanıcı ssn'i içerecek bu sayede sadece course name yeterli olacak -->
+                            <a href="/drop/{{ row[0] }}" style='color:#cf0a2c;' >Drop</a>
+                        {% else %}
+                            <a href="/enroll/{{ row[0] }}" style='color:#cf0a2c;'>Enroll</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        <br><br>
+        <br><br>
+        <br><br>
+
+    </body>
+</html>

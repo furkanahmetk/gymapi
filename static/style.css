@@ -1,0 +1,264 @@
+.CenterArea {
+    width: 382px;
+    overflow: hidden;
+    margin: auto;
+    vertical-align: bottom;
+    padding: 60px;
+    background-color: #fafafaee;
+    background-size: cover;
+    /* Resize the background image to cover the entire header */
+    border-radius: 15px;
+    box-shadow: 0 4px 8px 0 #40404143;
+    text-align: justify;
+}
+
+.CenterAreaLogin {
+    width: 382px;
+    overflow: hidden;
+    margin: auto;
+    vertical-align: bottom;
+    padding: 60px;
+    background-color: #fafafaee;
+    background-size: cover;
+    /* Resize the background image to cover the entire header */
+    border-radius: 15px;
+    box-shadow: 0 4px 8px 0 #40404143;
+    text-align: center;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-image: url('background.jpg');
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-position: center;
+    background-size: cover;
+    font-family: BOURGEOIS, 'roboto';
+}
+
+.header {
+    padding: 5px;
+    text-align: left;
+    background-color: rgb(207, 10, 44, 0.95);
+    background-size: cover;
+    /* Resize the background image to cover the entire header */
+    color: #fafafa;
+    font-size: 25px;
+    /* Adjust font size as needed */
+    font-family: BOURGEOIS, 'roboto';
+
+    position: relative;
+    height: 150px;
+}
+
+.scrollHeader {
+    padding: 25px;
+    text-align: left;
+    background-color: #404041;
+    background-size: cover;
+    /* Resize the background image to cover the entire header */
+    color: #fafafa;
+    font-size: 15px;
+    /* Adjust font size as needed */
+    font-family: BOURGEOIS, 'roboto';
+    line-height: 1.41415926535;
+    position: relative;
+    height: 15px;
+}
+
+.button-main,
+.button-main-small {
+    font-family: "roboto", sans-serif;
+    background-color: transparent;
+    color: #cf0a2c;
+    border-radius: 20px;
+    border: 1px solid #cf0a2c;
+    padding: 8px 13px;
+    font-size: 16px;
+    outline: none;
+    cursor: pointer;
+}
+
+.button-main:hover {
+    background-color: #cf0a2c;
+    /* Green */
+    color: #fafafa;
+}
+
+.button-book {
+    font-family: "roboto", sans-serif;
+    background-color: #fafafafa;
+    color: #cf0a2c;
+    border-radius: 20px;
+    border: 1px solid #cf0a2c;
+    padding: 8px 13px;
+    font-size: 16px;
+    outline: none;
+    cursor: pointer;
+}
+
+.button-book:hover {
+    background-color: #cf0a2c;
+    /* Green */
+    color: #fafafa;
+}
+.Menu {
+    position: relative;
+    padding-top: 10px;
+    display: table;
+    text-align: left;
+}
+
+.Bar {
+    position: relative;
+    vertical-align: bottom;
+    bottom: 50px;
+    height: 30px;
+    color: #cf0a2c;
+    background-size: auto;
+    size: 200px 150px;
+    font-weight: 300;
+    padding-right: 5px;
+}
+
+
+a {
+    text-align: center;
+    color: #cf0a2c;
+    padding: 15px;
+    font-size: 15px;
+    font-family: BOURGEOIS, 'roboto';
+}
+
+a:link {
+    text-decoration: none;
+    color: #fafafa;
+}
+
+a:visited {
+    text-decoration: none;
+    color: #b7b7b7;
+}
+
+a:hover {
+    text-decoration: underline;
+    color: #cf0a2c;
+}
+
+a:active {
+    text-decoration: none;
+}
+
+.calendar {
+    font-family: BOURGEOIS, 'roboto';
+    background-color: #fafafa66;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.month {
+    margin-bottom: 20px;
+}
+
+.month-name {
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.2em;
+    margin-bottom: 10px;
+    color: #fafafa;
+    background-color: #404041;
+}
+
+.days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+}
+
+.day-header {
+    text-align: center;
+    font-weight: bold;
+    padding: 5px;
+    background-color: #f0f0f0;
+}
+
+.day {
+    aspect-ratio: 1;
+    border: 1px solid #ddd;
+    padding: 5px;
+    position: relative;
+}
+
+.day-number {
+    font-size: 0.8em;
+    margin-bottom: 3px;
+}
+
+.class-event {
+    font-size: 0.7em;
+    background-color: #fafafa;
+    color: #cf0a2c;
+    padding: 2px 4px;
+    border-radius: 3px;
+    margin-top: 3px;
+    display: inline-block;
+}
+
+.empty-day {
+    background-color: #f9f9f9;
+    border: none;
+}
+
+.booking-container {
+    font-family: BOURGEOIS, 'roboto';
+    max-width: 1000px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #fafafa66;
+    border: 1px solid #fafafa;
+    border-radius: 8px;
+}
+
+.timeslot-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.timeslot {
+    padding: 15px;
+    text-align: center;
+    background-color: #fafafa;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.timeslot:hover {
+    background-color: #e0e0e0;
+}
+
+.timeslot.selected {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.timeslot.booked {
+    background-color: #cf0a2c;
+    color: white;
+    cursor: not-allowed;
+}
+
+.room-selector {
+    margin: 20px 0;
+}
+
+.drop-Box {
+    color: #cf0a2c;
+    background-color: #fafafa;
+    border-radius: 5px;
+    outline: none;
+    border: 1px solid #888;
+}

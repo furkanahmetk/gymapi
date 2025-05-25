@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+
+<html>
+<link rel="stylesheet" href="assets/toolkit/styles/toolkit.css">
+<script src="assets/toolkit/scripts/toolkit.js"></script>
+<script src="assets/toolkit/styles/bootstrap.css"></script>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css" />
+<link
+    href="https://fonts.googleapis.com/css?family=Roboto+Slab:100,300,400,700|Roboto:100,100i,300,300i,400,400i,500,500i,700,700i,900,900i&subset=latin-ext"
+    rel="stylesheet">
+
+<head>
+    <title>Add Course</title>
+    <link rel="stylesheet" type="text/css" href="../static/style.css">
+</head>
+
+<body>
+    <div class="header">
+        <h1>Metu Gym Portal</h1>
+    </div>
+
+     <div class="scrollHeader">
+        <table class="Bar">
+            <tr>
+                <th>
+                    <a href="/register" class="Item">
+                        <h3><u>Register user</u></h3>
+                    </a>
+                </th>
+                <th>
+                    <a href="/booking_admin" class="Item">
+                        <h3><u>Book session</u></h3>
+                    </a>
+                </th>
+                <th>
+                    <a href="/classes" class="Item">
+                        <h3><u>classes</u></h3>
+                    </a>
+                </th>
+                <th>
+                    <a href="/add_instructor" class="Item">
+                        <h3><u>Add instructor</u></h3>
+                    </a>
+                </th>
+                <th>
+                    <a href="/add_class" class="Item">
+                        <h3><u>Add class</u></h3>
+                    </a>
+                </th>
+                <th>
+                    <a href="/remove_member" class="Item">
+                        <h3><u>Remove member</u></h3>
+                    </a>
+                </th>
+                <th>
+                    <a href="/logout" class="Item">
+                        <h3><u>Logout</u></h3>
+                    </a>
+                </th>
+            </tr>
+        </table>
+    </div>
+    <br>
+    <br>
+    <br>
+    <div class="CenterArea">
+        <form name="formRegistration" method="POST" action="/add-class">
+            <label><b>SSN</b></label>
+            <input id="ssn" type="text" name="SSN" autocomplete="current-userName">
+            <span id="usernameError" style="color: red;"></span>
+
+            <br><br>
+
+            <label><b>Class Name</b></label>
+            <input id="class name" type="text" name="className" autocomplete="current-className">
+            <span id="classNameError" style="color: red;"></span>
+
+            <br><br>
+
+            <label><b>Capacity</b></label>
+            <input id="capacity" type="number" name="capacity" autocomplete="current-capacity">
+            <span id="capacityError" style="color: red;"></span>
+
+            <br><br>
+
+            <form>
+                <!-- Instructor Dropdown -->
+                <label for="instructor">Select Instructor:</label>
+                <select id="instructor" name="instructor"  class="drop-Box">
+                    {% for instructor in instructors %}
+                    <option value="{{ instructor.SSN }}">{{ instructor.name }}</option>
+                    {% endfor %}
+                </select>
+
+                <br><br>
+
+                <!-- Room Dropdown -->
+                <label for="room">Select Room:</label>
+                <select id="room" name="room" class="drop-Box">
+                    {% for room in rooms %}
+                    <option value="{{ room.ID }}">{{ room.Name }} ({{ room.ID }})</option>
+                    {% endfor %}
+                </select>
+            </form>
+            <br>
+            <input type="checkbox" id="check">
+            <span style="color: #111111">Special</span>
+
+            <br><br>
+
+            <input class="button-main" type="submit" value="Submit" id="log">
+            <input class="button-main" type="reset" value="Reset" id="log2">
+
+        </form>
+    </div>
+    <br><br>
+    <br><br>
+    <br><br>
+
+</body>
+
+</html>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+
+<html>
+<link rel="stylesheet" href="assets/toolkit/styles/toolkit.css">
+<script src="assets/toolkit/scripts/toolkit.js"></script>
+<script src="assets/toolkit/styles/bootstrap.css"></script>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css" />
+<link
+    href="https://fonts.googleapis.com/css?family=Roboto+Slab:100,300,400,700|Roboto:100,100i,300,300i,400,400i,500,500i,700,700i,900,900i&subset=latin-ext"
+    rel="stylesheet">
+
+<head>
+    <title>Edit User Details</title>
+    <link rel="stylesheet" type="text/css" href="../static/style.css">
+</head>
+
+<body>
+    <div class="header">
+        <h1>Metu Gym Portal</h1>
+    </div>
+
+    <div class="scrollHeader">
+        <table class="Bar">
+            <tr>
+                <th>
+                    <a href="/register" class="Item">
+                        <h3><u>Register user</u></h3>
+                    </a>
+                </th>
+                <th>
+                    <a href="/booking_admin" class="Item">
+                        <h3><u>Book session</u></h3>
+                    </a>
+                </th>
+                <th>
+                    <a href="/classes" class="Item">
+                        <h3><u>classes</u></h3>
+                    </a>
+                </th>
+                <th>
+                    <a href="/add_instructor" class="Item">
+                        <h3><u>Add instructor</u></h3>
+                    </a>
+                </th>
+                <th>
+                    <a href="/add_class" class="Item">
+                        <h3><u>Add class</u></h3>
+                    </a>
+                </th>
+                <th>
+                    <a href="/remove_member" class="Item">
+                        <h3><u>Remove member</u></h3>
+                    </a>
+                </th>
+                <th>
+                    <a href="/logout" class="Item">
+                        <h3><u>Logout</u></h3>
+                    </a>
+                </th>
+            </tr>
+        </table>
+    </div>
+    <br>
+    <br>
+    <br>
+
+    <div class="CenterArea" style="padding: 15px; width: 40%; bottom: 18px;">
+        <h3 style="color:#cf0a2c; ">Edit profile details</h3>
+        <form method="POST" action="/profile-edit">
+            <h2 style="color:#cf0a2c;">Please fill the areas you desire to change.</h2>
+            <br>
+            <label for="SSN">
+                SSN:
+            </label>
+            <input type="text" name="ssn" id="SSN" placeholder="12312312312" style="border-radius: 5px; border: none;">
+            <br><br>
+            <label for="pWord">
+                Password:
+            </label>
+            <input type="text" name="pwd" id="pWord" placeholder="*****" style="border-radius: 5px; border: none;">
+            <br><br>
+            <label for="fName">
+                FirstName:
+            </label>
+            <input type="text" name="firstName" id="fName" placeholder="John/Jane"
+                style="border-radius: 5px; border: none;">
+            <br><br>
+            <label for="lName">
+                Last Name:
+            </label>
+            <input type="text" name="lastName" id="lName" placeholder="Doe" style="border-radius: 5px; border: none;">
+            <br><br>
+            <label for="pNumber1">
+                Phone Number 1:
+            </label>
+            <input type="text" name="phone1" id="pNumber1" placeholder="+010000000000"
+                style="border-radius: 5px; border: none;">
+            <br><br>
+            <label for="pNumber2">
+                Phone Number 2:
+            </label>
+            <input type="text" name="phone2" id="pNumber2" placeholder="+010000000000"
+                style="border-radius: 5px; border: none;">
+            <br><br>
+            <label for="pNumber3">
+                Phone Number 3:
+            </label>
+            <input type="text" name="phone3" id="pNumber3" placeholder="+010000000000"
+                style="border-radius: 5px; border: none;">
+            <br><br>
+            <label for="membershipType">Membership type</label>
+            <select name="membershipType" id="membershipType"
+                style="width: 150px; color: #cf0a2c; background-color: #fafafa; border-radius: 5px; outline: none;  border: 1px solid #888;">
+                <option value="ad">Admin</option>
+                <option value="em">Economy Monthly</option>
+                <option value="ea">Economy Annual</option>
+                <option value="rm">Regular Monthly</option>
+                <option value="ra">Regular Annual</option>
+                <option value="am">Advanced Monthly</option>
+                <option value="aa">Advanced Annual</option>
+            </select>
+            <br><br>
+            <button class="button-main" type="submit" value="Confirm changes" id="search" style="width: 150px;">Confirm
+                changes</button>
+            <!--<input type="submit" value="Confirm changes" id="search" style="width: 150px;">-->
+        </form>
+    </div>
+    <br><br>
+    <br><br>
+
+</body>
+
+</html>
