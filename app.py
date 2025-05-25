@@ -376,12 +376,20 @@ class Register(Resource):
 class Login(Resource):
     @api.expect(login_model)
     def post(self):
-        """Login user and get token"""
-        data = api.payload
+        if request.is_json:
+            data = request.json
+        else:
+            data = request.form
+        """Login user, generate token, and render template"""
+        # Parse form data
+        ssn = data.get('SSN')
+        password = data.get('password')
 
-        user = Users.query.get(data['SSN'])
-        if not user or not user.check_password(data['password']):
-            abort(401, 'Invalid credentials')
+        # Fetch user from the database
+        user = Users.query.get(ssn)
+        if not user or not user.check_password(password):
+            # Render login page with error message for invalid credentials
+            return render_template('login.html', message='Invalid credentials'), 401
 
         # Generate token
         token = jwt.encode({
@@ -390,15 +398,15 @@ class Login(Resource):
             'exp': datetime.utcnow() + timedelta(hours=24)
         }, app.config['SECRET_KEY'], algorithm='HS256')
 
-        return {
-            'token': token,
-            'user': {
-                'SSN': user.SSN,
-                'firstName': user.firstName,
-                'lastName': user.lastName,
-                'membershipType': user.membershipType
-            }
-        }
+        # Render dashboard template with user data and token
+        return render_template('Home.html', user={
+            'SSN': user.SSN,
+            'firstName': user.firstName,
+            'lastName': user.lastName,
+            'membershipType': user.membershipType,
+            'token': token
+        })
+
 @api.route('/auth/logout')
 class Logout(Resource):
     @api.doc(security='Bearer')
