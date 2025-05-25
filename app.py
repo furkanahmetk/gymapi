@@ -718,7 +718,58 @@ class InstructorsResource(Resource):
         db.session.commit()
         return {'message': 'Instructor updated'}
 
+@app.route('/classes', methods=['GET'])
+def register_to_class():
+    user_ssn = session['user_id']  # Simulated for demo
 
+    # Get all courses and whether the user is enrolled
+    courses = db.session.query(
+        Course.courseName,
+        Course.isSpecial,
+        (Instructors.firstName + ' ' + Instructors.lastName).label("instructorName"),
+        db.session.query(User_Course).filter_by(courseName=Course.courseName, userID=user_ssn).exists().label("enrolled")
+    ).join(Instructors, Course.InstructorID == Instructors.SSN).all()
+
+    # Convert results for template
+    data = [
+        (
+            course.courseName,
+            "10:00 - 11:00",                      # Static placeholder for time (can be enhanced)
+            course.instructorName,
+            "Yes" if course.isSpecial else "No",
+            course.isSpecial,
+            course.enrolled
+        )
+        for course in courses
+    ]
+
+    return render_template("register_to_class.html", data=data)
+
+
+@app.route('/enroll/<course_name>')
+def enroll(course_name):
+    user_ssn = session['user_id']
+
+    # Check for existing enrollment
+    existing = User_Course.query.filter_by(courseName=course_name, userID=user_ssn).first()
+    if not existing:
+        new_enrollment = User_Course(courseName=course_name, userID=user_ssn)
+        db.session.add(new_enrollment)
+        db.session.commit()
+
+    return redirect(url_for('register_to_class'))
+
+
+@app.route('/drop/<course_name>')
+def drop(course_name):
+    user_ssn = session['user_id']
+
+    enrollment = User_Course.query.filter_by(courseName=course_name, userID=user_ssn).first()
+    if enrollment:
+        db.session.delete(enrollment)
+        db.session.commit()
+
+    return redirect(url_for('register_to_class'))
 # -------- Room Endpoints --------
 @api.route('/rooms')
 class RoomList(Resource):
@@ -1158,6 +1209,21 @@ def create_class():
 
     return render_template('/add-courses')
 
+@app.route('/add_instructor', methods=['GET', 'POST'])
+def add_instructor():
+    if request.method == 'POST':
+        ssn = request.form['SSN']
+        first_name = request.form['firstName']
+        last_name = request.form['lastName']
+        phone = request.form['phoneNo']
+
+        # Optionally validate or check duplicates here
+        new_instructor = Instructors(SSN=ssn, firstName=first_name, lastName=last_name, phone=phone)
+        db.session.add(new_instructor)
+        db.session.commit()
+        return redirect(url_for('add_instructor'))
+
+    return render_template('add_instructor.html')  # Match your template filename
 # -------- Feedback Endpoints --------
 @api.route('/feedbacks')
 class FeedbackList(Resource):
