@@ -8,6 +8,7 @@ import jwt  # This will work after installing PyJWT
 from datetime import datetime, timedelta
 from functools import wraps
 from flask import abort
+from flask import Flask, request, render_template, make_response
 
 """
 This file contains the Flask app configuration and API endpoints.
@@ -18,6 +19,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'your-secret-key-change-this'  # Change this to a secure secret key
 CORS(app)
 
+# ------------ AUTHENTICATION model ----------------
 authorizations = {
     'Bearer': {
         'type': 'apiKey',
@@ -27,6 +29,7 @@ authorizations = {
     }
 }
 
+# ------------ DB init ----------------
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 api = Api(app, version='1.0', title='Gym Course Scheduling API',
@@ -97,6 +100,21 @@ def blacklist_token(token):
 def is_token_blacklisted(token):
     blacklisted = Blacklist.query.filter_by(token=token).first()
     return bool(blacklisted)
+#---------------Automatic activit creation function-----------
+
+def create_activity(name, description, date, time, created_by):
+    """
+    Utility function to create an activity and save it to the database.
+    """
+    new_activity = Activities(
+        name=name,
+        description=description,
+        date=date,
+        time=time,
+        created_by=created_by
+    )
+    db.session.add(new_activity)
+    db.session.commit()
 
 # ------------ MODELS (Updated with password) ----------------
 
@@ -207,6 +225,23 @@ class Feedback(db.Model):
     user = db.relationship('Users', backref='feedbacks')
     schedule = db.relationship('RoomSchedule', backref='feedbacks')
 
+class Activities(db.Model):
+    __tablename__ = 'activities'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    date = db.Column(db.Date, nullable=False)
+    time = db.Column(db.Time, nullable=False)
+    created_by = db.Column(db.String(50), nullable=False)  # User SSN or unique identifier
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __init__(self, name, description, date, time, created_by):
+        self.name = name
+        self.description = description
+        self.date = date
+        self.time = time
+        self.created_by = created_by
+
 
 # ------------ SWAGGER MODELS (Updated) ----------------
 
@@ -288,6 +323,22 @@ feedback_model = api.model('Feedback', {
     'comment': fields.String(description='Feedback comment')
 })
 
+activity_model = api.model('Activity', {
+    'id': fields.Integer(readOnly=True, description='The unique identifier of the activity'),
+    'name': fields.String(required=True, description='Activity name'),
+    'description': fields.String(description='Activity description'),
+    'date': fields.String(required=True, description='Activity date (YYYY-MM-DD)'),
+    'time': fields.String(required=True, description='Activity time (HH:MM:SS)'),
+    'created_by': fields.String(required=True, description='User SSN who created the activity'),
+    'created_at': fields.String(readOnly=True, description='Timestamp when the activity was created')
+})
+
+create_activity_model = api.model('CreateActivity', {
+    'name': fields.String(required=True, description='Activity name'),
+    'description': fields.String(description='Activity description'),
+    'date': fields.String(required=True, description='Activity date (YYYY-MM-DD)'),
+    'time': fields.String(required=True, description='Activity time (HH:MM:SS)')
+})
 
 # ------------ AUTHENTICATION ENDPOINTS ----------------
 
@@ -717,6 +768,10 @@ class RoomScheduleList(Resource):
         if not Room.query.get(data['roomId']):
             abort(400, 'Room not found')
 
+        # Validate room existence
+        if not Room.query.get(data['roomId']):
+            abort(400, 'Room not found')
+
         # Validate booking type constraints
         if data['bookingType'] == 'class' and not data.get('courseName'):
             abort(400, 'Course name required for class booking')
@@ -730,8 +785,26 @@ class RoomScheduleList(Resource):
         schedule = RoomSchedule(**data)
         db.session.add(schedule)
         db.session.commit()
-        return {'message': 'Room schedule created'}, 201
 
+        # Automatically create an activity
+        activity_name = f"Room Schedule: {data['bookingType'].capitalize()}"
+        activity_description = f"Room {data['roomId']} scheduled for {data['bookingType']}"
+
+        if data['bookingType'] == 'class':
+            activity_description += f" (Course: {data['courseName']})"
+        elif data['bookingType'] == 'private':
+            user = Users.query.get(data['userID'])
+            activity_description += f" (User: {user.firstName} {user.lastName})"
+
+        create_activity(
+            name=activity_name,
+            description=activity_description,
+            date=data['scheduleDate'],
+            time=data['scheduleTime'],
+            created_by=current_user.SSN
+        )
+
+        return {'message': 'Room schedule created and activity logged'}, 201
 
 @api.route('/roomschedules/<int:schedule_id>')
 class RoomScheduleResource(Resource):
@@ -853,6 +926,75 @@ class FeedbackResource(Resource):
         db.session.delete(feedback)
         db.session.commit()
         return {'message': 'Feedback deleted'}
+
+
+# ------------ ACTIVITIES ----------------
+@api.route('/activities')
+class ActivitiesResource(Resource):
+    @api.marshal_with(activity_model, as_list=True)
+    @api.doc(security='Bearer')
+    @token_required
+    def get(self, current_user):
+        """Get all activities"""
+        activities = Activities.query.all()
+        return activities
+
+    @api.expect(create_activity_model)
+    @api.doc(security='Bearer')
+    @token_required
+    def post(self, current_user):
+        """Create a new activity"""
+        data = api.payload
+
+        # Create a new activity
+        activity = Activities(
+            name=data['name'],
+            description=data.get('description'),
+            date=datetime.strptime(data['date'], '%Y-%m-%d').date(),
+            time=datetime.strptime(data['time'], '%H:%M:%S').time(),
+            created_by=current_user.ssn  # Assuming `ssn` is a field in the `Users` model
+        )
+
+        db.session.add(activity)
+        db.session.commit()
+
+        return {'message': 'Activity created successfully'}, 201
+
+
+@api.route('/activities/index')
+class ActivityIndexResource(Resource):
+    @api.marshal_with(activity_model, as_list=True)
+    @api.doc(security='Bearer')
+    @token_required
+    def get(self, current_user):
+        """Get activities for the current or specified month"""
+        # Parse query parameters for month and year
+        month = request.args.get('month', datetime.utcnow().month, type=int)
+        year = request.args.get('year', datetime.utcnow().year, type=int)
+
+        # Fetch activities for the specified month and year
+        activities = Activities.query.filter(
+            db.extract('month', Activities.date) == month,
+            db.extract('year', Activities.date) == year
+        ).all()
+
+        return activities
+
+# ------------ INDEX ----------------
+@api.route('/index')
+class IndexResource(Resource):
+    @api.doc(security='Bearer', params={'user_id': 'Optional user ID to filter activities'})
+    @token_required
+    def get(self, current_user):
+        """Get all activities or activities of a specific user"""
+        user_id = request.args.get('user_id', type=int)
+
+        if user_id:
+            activities = Activities.query.filter_by(user_id=user_id).all()
+        else:
+            activities = Activities.query.all()
+
+        return make_response(render_template('Home.html', activities=activities), 200, {'Content-Type': 'text/html'})
 
 
 # ------------ MAIN APPLICATION ----------------
