@@ -1,136 +1,136 @@
-<!DOCTYPE html>
+    <!DOCTYPE html>
 
-<html>
-<link rel="stylesheet" href="assets/toolkit/styles/toolkit.css">
-<script src="assets/toolkit/scripts/toolkit.js"></script>
-<script src="assets/toolkit/styles/bootstrap.css"></script>
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css" />
-<link
-    href="https://fonts.googleapis.com/css?family=Roboto+Slab:100,300,400,700|Roboto:100,100i,300,300i,400,400i,500,500i,700,700i,900,900i&subset=latin-ext"
-    rel="stylesheet">
+    <html>
+    <link rel="stylesheet" href="assets/toolkit/styles/toolkit.css">
+    <script src="assets/toolkit/scripts/toolkit.js"></script>
+    <script src="assets/toolkit/styles/bootstrap.css"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css" />
+    <link
+        href="https://fonts.googleapis.com/css?family=Roboto+Slab:100,300,400,700|Roboto:100,100i,300,300i,400,400i,500,500i,700,700i,900,900i&subset=latin-ext"
+        rel="stylesheet">
 
-<head>
-    <title>Register</title>
-    <link rel="stylesheet" type="text/css" href="../static/style.css">
-</head>
+    <head>
+        <title>Register</title>
+        <link rel="stylesheet" type="text/css" href="../static/style.css">
+    </head>
 
-<body>
-    <div class="header">
-        <h1>Metu Gym Portal</h1>
-    </div>
+    <body>
+        <div class="header">
+            <h1>Metu Gym Portal</h1>
+        </div>
 
-    <div class="scrollHeader">
-        <table class="Bar">
-            <tr>
-                <th>
-                    <a href="/register" class="Item">
-                        <h3><u>Register user</u></h3>
-                    </a>
-                </th>
-                <th>
-                    <a href="/booking_admin" class="Item">
-                        <h3><u>Book session</u></h3>
-                    </a>
-                </th>
-                <th>
-                    <a href="/classes" class="Item">
-                        <h3><u>classes</u></h3>
-                    </a>
-                </th>
-                <th>
-                    <a href="/add_instructor" class="Item">
-                        <h3><u>Add instructor</u></h3>
-                    </a>
-                </th>
-                <th>
-                    <a href="/add_class" class="Item">
-                        <h3><u>Add class</u></h3>
-                    </a>
-                </th>
-                <th>
-                    <a href="/remove_member" class="Item">
-                        <h3><u>Remove member</u></h3>
-                    </a>
-                </th>
-                <th>
-                    <a href="/logout" class="Item">
-                        <h3><u>Logout</u></h3>
-                    </a>
-                </th>
-            </tr>
-        </table>
-    </div>
-    <br>
-    <br>
-    <br>
-    <div class="CenterArea">
-        <form name="formRegistration" method="POST" onsubmit="return validate();" action="/register">
-            <label><b>SSN</b></label>
-            <input id="ssn" type="number" name="SSN" autocomplete="current-userName">
-            <span id="usernameError" style="color: red;"></span>
+        <div class="scrollHeader">
+            <table class="Bar">
+                <tr>
+                    <th>
+                        <a href="/register" class="Item">
+                            <h3><u>Register user</u></h3>
+                        </a>
+                    </th>
+                    <th>
+                        <a href="/booking_admin" class="Item">
+                            <h3><u>Book session</u></h3>
+                        </a>
+                    </th>
+                    <th>
+                        <a href="/classes" class="Item">
+                            <h3><u>classes</u></h3>
+                        </a>
+                    </th>
+                    <th>
+                        <a href="/add_instructor" class="Item">
+                            <h3><u>Add instructor</u></h3>
+                        </a>
+                    </th>
+                    <th>
+                        <a href="/add_class" class="Item">
+                            <h3><u>Add class</u></h3>
+                        </a>
+                    </th>
+                    <th>
+                        <a href="/remove_member" class="Item">
+                            <h3><u>Remove member</u></h3>
+                        </a>
+                    </th>
+                    <th>
+                        <a href="/logout" class="Item">
+                            <h3><u>Logout</u></h3>
+                        </a>
+                    </th>
+                </tr>
+            </table>
+        </div>
+        <br>
+        <br>
+        <br>
+        <div class="CenterArea">
+            <form name="formRegistration" method="POST" onsubmit="return validate();" action="/register">
+                <label><b>SSN</b></label>
+                <input id="ssn" type="number" name="SSN" autocomplete="current-userName">
+                <span id="usernameError" style="color: red;"></span>
 
-            <br><br>
+                <br><br>
 
-            <label><b>Password</b></label>
-            <input id="Pass" type="password" name="password" autocomplete="current-password">
-            <span id="passwordError" style="color: red;"></span>
+                <label><b>Password</b></label>
+                <input id="Pass" type="password" name="password" autocomplete="current-password">
+                <span id="passwordError" style="color: red;"></span>
 
 
-            <br><br>
+                <br><br>
 
-            <label><b>First Name</b></label>
-            <input id="first name" type="text" name="firstName" autocomplete="current-firstName">
-            <span id="firstNameError" style="color: red;"></span>
+                <label><b>First Name</b></label>
+                <input id="first name" type="text" name="firstName" autocomplete="current-firstName">
+                <span id="firstNameError" style="color: red;"></span>
 
-            <br><br>
+                <br><br>
 
-            <label><b>Last Name</b></label>
-            <input id="lastname" type="text" name="lastName" autocomplete="current-lastName">
-            <span id="lastNameError" style="color: red;"></span>
+                <label><b>Last Name</b></label>
+                <input id="lastname" type="text" name="lastName" autocomplete="current-lastName">
+                <span id="lastNameError" style="color: red;"></span>
 
-            <br><br>
+                <br><br>
 
-            <label><b>Phone No 1</b></label>
-            <input id="phoneNum" type="text" name="phoneNo" autocomplete="current-phoneNo">
-            <span id="phoneNoError" style="color: red;"></span>
+                <label><b>Phone No 1</b></label>
+                <input id="phoneNum" type="text" name="phoneNo" autocomplete="current-phoneNo">
+                <span id="phoneNoError" style="color: red;"></span>
 
-            <br><br>
+                <br><br>
 
-            <label><b>Phone No 2</b></label>
-            <input id="phoneNum" type="text" name="phoneNo" autocomplete="current-phoneNo">
-            <span id="phoneNoError" style="color: red;"></span>
+                <label><b>Phone No 2</b></label>
+                <input id="phoneNum" type="text" name="phoneNo" autocomplete="current-phoneNo">
+                <span id="phoneNoError" style="color: red;"></span>
 
-            <br><br>
+                <br><br>
 
-            <label><b>Phone No 3</b></label>
-            <input id="phoneNum" type="text" name="phoneNo" autocomplete="current-phoneNo">
-            <span id="phoneNoError" style="color: red;"></span>
+                <label><b>Phone No 3</b></label>
+                <input id="phoneNum" type="text" name="phoneNo" autocomplete="current-phoneNo">
+                <span id="phoneNoError" style="color: red;"></span>
 
-            <br><br>
+                <br><br>
 
-            <label><b>Membership type</b></label>
-            <select name="membershipType" id="membershipType"
-                style="width: 150px; color: #cf0a2c; background-color: #fafafa; border-radius: 5px; outline: none;  border: 1px solid #888;">
-                <option value="ad">Admin</option>
-                <option value="em">Economy Monthly</option>
-                <option value="ea">Economy Annual</option>
-                <option value="rm">Regular Monthly</option>
-                <option value="ra">Regular Annual</option>
-                <option value="am">Advanced Monthly</option>
-                <option value="aa">Advanced Annual</option>
-            </select>
+                <label><b>Membership type</b></label>
+                <select name="membershipType" id="membershipType"
+                    style="width: 150px; color: #cf0a2c; background-color: #fafafa; border-radius: 5px; outline: none;  border: 1px solid #888;">
+                    <option value="ad">Admin</option>
+                    <option value="em">Economy Monthly</option>
+                    <option value="ea">Economy Annual</option>
+                    <option value="rm">Regular Monthly</option>
+                    <option value="ra">Regular Annual</option>
+                    <option value="am">Advanced Monthly</option>
+                    <option value="aa">Advanced Annual</option>
+                </select>
 
-            <br><br>
+                <br><br>
 
-            <input class="button-main" type="submit" value="Submit" id="log">
-            <input class="button-main" type="reset" value="Reset" id="log2">
+                <input class="button-main" type="submit" value="Submit" id="log">
+                <input class="button-main" type="reset" value="Reset" id="log2">
 
-        </form>
-    </div>
-    <br><br>
-    <br><br>
-    <br><br>
+            </form>
+        </div>
+        <br><br>
+        <br><br>
+        <br><br>
 
-</body>
+    </body>
 
-</html>
+    </html>
